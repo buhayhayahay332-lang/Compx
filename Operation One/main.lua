@@ -250,6 +250,10 @@ aimbot_groupbox:AddSlider('aimbot_fov_size', {
                     weapon_modifications_settings.instant_ads = value;
                 end});
 
+                weapon_modifications_groupbox:AddSlider('weapon_modifications_instant_ads_speed', {Text = 'ADS Speed', Default = 30, Min = 1, Max = 100, Rounding = 0, Compact = false, Callback = function(Value)
+                    weapon_modifications_settings.instant_ads_speed = (Value / 100);
+                end});
+
                 weapon_modifications_groupbox:AddToggle('weapon_modifications_firerate_bypass', {Text = "Fire Rate Bypass", Default = false, Callback = function(value: boolean)
                     weapon_modifications_settings.firerate_bypass = value;
                 end});

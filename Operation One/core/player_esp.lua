@@ -265,9 +265,13 @@ local function get_health_values(character, data)
     return nil, nil
 end
 
-local function hide_esp_objects(data)
+local function hide_esp_objects(data, hide_chams)
     if not data then
         return
+    end
+
+    if hide_chams == nil then
+        hide_chams = true
     end
 
     set_visible(data.corner_lines, false)
@@ -281,7 +285,7 @@ local function hide_esp_objects(data)
     data.box_outline.Visible = false
     data.box_fill.Visible = false
 
-    if data.chams then
+    if hide_chams and data.chams then
         data.chams.Enabled = false
     end
 end
@@ -414,7 +418,7 @@ rawset(player_esp, "set_player_esp", newcclosure(function(character: Model)
     data.chams = Instance.new("Highlight")
     data.chams.Enabled = false
     data.chams.Adornee = character
-    data.chams.Parent = core_gui
+    data.chams.Parent = workspace
 
     data.render_connection = run_service.RenderStepped:Connect(function()
         camera = cloneref(workspace.CurrentCamera)
@@ -436,9 +440,32 @@ rawset(player_esp, "set_player_esp", newcclosure(function(character: Model)
             return
         end
 
+
+        if settings.chams then
+            data.chams.Enabled = true
+            data.chams.Adornee = character
+            data.chams.FillColor = settings.chams_fill_color
+            data.chams.OutlineColor = settings.chams_outline_color
+
+            local baseFill = math.clamp(settings.chams_fill_transparency, 0, 1)
+            local baseOutline = math.clamp(settings.chams_outline_transparency, 0, 1)
+
+            if settings.chams_thermal then
+                local breathe = (math.atan(math.sin(tick() * 2)) * 2 / math.pi)
+                data.chams.FillTransparency = math.clamp(baseFill * (1 - (breathe * 0.1)), 0, 1)
+            else
+                data.chams.FillTransparency = baseFill
+            end
+
+            data.chams.OutlineTransparency = baseOutline
+            data.chams.DepthMode = settings.chams_visible_check and Enum.HighlightDepthMode.Occluded or Enum.HighlightDepthMode.AlwaysOnTop
+        else
+            data.chams.Enabled = false
+        end
+
         local point, on = to_view_point(localTorso.Position)
         if not on then
-            hide_esp_objects(data)
+            hide_esp_objects(data, false)
             return
         end
 
@@ -448,14 +475,14 @@ rawset(player_esp, "set_player_esp", newcclosure(function(character: Model)
 
         local minX, minY, maxX, maxY = get_bounds_2d(character)
         if not minX then
-            hide_esp_objects(data)
+            hide_esp_objects(data, false)
             return
         end
 
         local width = maxX - minX
         local height = maxY - minY
         if width <= 1 or height <= 1 then
-            hide_esp_objects(data)
+            hide_esp_objects(data, false)
             return
         end
 
@@ -635,27 +662,6 @@ rawset(player_esp, "set_player_esp", newcclosure(function(character: Model)
             set_visible(data.skeleton_lines, false)
         end
 
-        if settings.chams then
-            data.chams.Enabled = true
-            data.chams.Adornee = character
-            data.chams.FillColor = settings.chams_fill_color
-            data.chams.OutlineColor = settings.chams_outline_color
-
-            local baseFill = math.clamp(settings.chams_fill_transparency, 0, 1)
-            local baseOutline = math.clamp(settings.chams_outline_transparency, 0, 1)
-
-            if settings.chams_thermal then
-                local breathe = (math.atan(math.sin(tick() * 2)) * 2 / math.pi)
-                data.chams.FillTransparency = math.clamp(baseFill * (1 - (breathe * 0.1)), 0, 1)
-            else
-                data.chams.FillTransparency = baseFill
-            end
-
-            data.chams.OutlineTransparency = baseOutline
-            data.chams.DepthMode = settings.chams_visible_check and Enum.HighlightDepthMode.Occluded or Enum.HighlightDepthMode.AlwaysOnTop
-        else
-            data.chams.Enabled = false
-        end
     end)
 
     data.ancestry_connection = character.AncestryChanged:Connect(function(_, parent)
