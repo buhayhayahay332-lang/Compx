@@ -1,3 +1,4 @@
+--// do the same thing as silent aim transfer the operation one lib but keep the structure like this
 local player_esp = {}
 
 local has_esp = {}
@@ -9,6 +10,7 @@ local run_service
 local camera = cloneref(workspace.CurrentCamera)
 local initialized = false
 local object_added_connection
+local viewmodels_added_connection
 
 local settings = {
     health_bar = false,
@@ -17,8 +19,10 @@ local settings = {
     skelton_thickness = 1,
     names = false,
     name_color = Color3.fromRGB(255, 255, 255),
+    font_size = 13,
     distance = false,
     distance_color = Color3.fromRGB(255, 255, 255),
+    distance_position = "Text",
     weapon = false,
     weapon_color = Color3.fromRGB(255, 255, 255),
     box = false,
@@ -30,12 +34,24 @@ local settings = {
     box_corner_color = Color3.fromRGB(255, 255, 255),
     box_corner_thickness = 1,
     box_corner_length = 14,
+    box_animate = false,
+    box_rotation_speed = 300,
+    box_gradient = false,
+    box_gradient_color_1 = Color3.fromRGB(243, 116, 116),
+    box_gradient_color_2 = Color3.fromRGB(0, 0, 0),
+    box_gradient_fill = false,
+    box_gradient_fill_color_1 = Color3.fromRGB(243, 116, 116),
+    box_gradient_fill_color_2 = Color3.fromRGB(0, 0, 0),
     chams = false,
+    chams_thermal = false,
     chams_fill_color = Color3.fromRGB(243, 116, 166),
     chams_outline_color = Color3.fromRGB(243, 116, 166),
     chams_fill_transparency = 0.5,
     chams_outline_transparency = 0,
     chams_visible_check = false,
+    fade_on_distance = false,
+    fade_on_death = false,
+    fade_on_leave = false,
     show_claymores = false,
     show_drones = false,
     claymore_color = Color3.fromRGB(255, 0, 0),
@@ -124,6 +140,14 @@ local function set_visible(drawings, visible)
     end
 end
 
+local function set_transparency(drawings, alpha)
+    for _, d in ipairs(drawings) do
+        if d then
+            d.Transparency = alpha
+        end
+    end
+end
+
 local function find_weapon_name(character)
     if not character then
         return nil
@@ -173,6 +197,74 @@ local function get_bounds_2d(character)
     return minX, minY, maxX, maxY
 end
 
+local function get_distance_alpha(distance)
+    if not settings.fade_on_distance or settings.max_distance <= 0 then
+        return 1
+    end
+    return math.clamp(1 - (distance / settings.max_distance), 0.1, 1)
+end
+
+local function get_animated_lerp_value()
+    if not settings.box_animate then
+        return 0
+    end
+    local speed = math.max(settings.box_rotation_speed, 1) / 60
+    return (math.sin(tick() * speed) + 1) / 2
+end
+
+local function get_health_values(character, data)
+    if data.humanoid and data.humanoid.Parent and data.humanoid.MaxHealth > 0 then
+        return data.humanoid.Health, data.humanoid.MaxHealth
+    end
+
+    data.humanoid = character:FindFirstChildOfClass("Humanoid")
+    if data.humanoid and data.humanoid.MaxHealth > 0 then
+        return data.humanoid.Health, data.humanoid.MaxHealth
+    end
+
+    local hp = character:GetAttribute("Health")
+        or character:GetAttribute("health")
+        or character:GetAttribute("HP")
+        or character:GetAttribute("hp")
+    local max_hp = character:GetAttribute("MaxHealth")
+        or character:GetAttribute("maxHealth")
+        or character:GetAttribute("max_health")
+        or character:GetAttribute("maxhp")
+        or character:GetAttribute("MaxHP")
+
+    if type(hp) == "number" and type(max_hp) == "number" and max_hp > 0 then
+        return hp, max_hp
+    end
+
+    if (not data.health_value or not data.health_value.Parent or not data.max_health_value or not data.max_health_value.Parent) then
+        local now = tick()
+        if now - (data.last_health_scan or 0) > 1 then
+            data.last_health_scan = now
+            data.health_value = nil
+            data.max_health_value = nil
+            for _, obj in ipairs(character:GetDescendants()) do
+                if obj:IsA("NumberValue") then
+                    local n = string.lower(obj.Name)
+                    if (n == "health" or n == "hp") and not data.health_value then
+                        data.health_value = obj
+                    elseif (n == "maxhealth" or n == "max_hp" or n == "maxhp") and not data.max_health_value then
+                        data.max_health_value = obj
+                    end
+                end
+                if data.health_value and data.max_health_value then
+                    break
+                end
+            end
+        end
+    end
+
+    if data.health_value and data.max_health_value and data.max_health_value.Value > 0 then
+        return data.health_value.Value, data.max_health_value.Value
+    end
+
+    return nil, nil
+end
+
 local function hide_esp_objects(data)
     if not data then
         return
@@ -194,6 +286,41 @@ local function hide_esp_objects(data)
     end
 end
 
+local function cleanup_esp_entry(character, data)
+    if not data then
+        return
+    end
+
+    if data.render_connection then
+        data.render_connection:Disconnect()
+        data.render_connection = nil
+    end
+
+    if data.ancestry_connection then
+        data.ancestry_connection:Disconnect()
+        data.ancestry_connection = nil
+    end
+
+    remove_drawing(data.health_bar_inner)
+    remove_drawing(data.health_bar_outer)
+    remove_drawing(data.name_text)
+    remove_drawing(data.distance_text)
+    remove_drawing(data.weapon_text)
+    remove_drawing(data.box_outline)
+    remove_drawing(data.box_fill)
+
+    for _, line in ipairs(data.corner_lines or {}) do
+        remove_drawing(line)
+    end
+
+    for _, line in ipairs(data.skeleton_lines or {}) do
+        remove_drawing(line)
+    end
+
+    destroy_instance(data.chams)
+    has_esp[character] = nil
+end
+
 rawset(player_esp, "set_player_esp", newcclosure(function(character: Model)
     task.wait(0.1)
 
@@ -206,11 +333,14 @@ rawset(player_esp, "set_player_esp", newcclosure(function(character: Model)
         return
     end
 
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-
     local data = {
         self = character,
-        humanoid = humanoid,
+        humanoid = character:FindFirstChildOfClass("Humanoid"),
+        health_value = nil,
+        max_health_value = nil,
+        last_health_scan = 0,
+        render_connection = nil,
+        ancestry_connection = nil,
     }
 
     data.health_bar_inner = Drawing.new("Square")
@@ -231,7 +361,7 @@ rawset(player_esp, "set_player_esp", newcclosure(function(character: Model)
     data.name_text.Visible = false
     data.name_text.Center = true
     data.name_text.Outline = true
-    data.name_text.Size = 13
+    data.name_text.Size = settings.font_size
     data.name_text.Font = 2
     data.name_text.ZIndex = 7
 
@@ -239,7 +369,7 @@ rawset(player_esp, "set_player_esp", newcclosure(function(character: Model)
     data.distance_text.Visible = false
     data.distance_text.Center = true
     data.distance_text.Outline = true
-    data.distance_text.Size = 13
+    data.distance_text.Size = settings.font_size
     data.distance_text.Font = 2
     data.distance_text.ZIndex = 7
 
@@ -247,7 +377,7 @@ rawset(player_esp, "set_player_esp", newcclosure(function(character: Model)
     data.weapon_text.Visible = false
     data.weapon_text.Center = true
     data.weapon_text.Outline = true
-    data.weapon_text.Size = 13
+    data.weapon_text.Size = settings.font_size
     data.weapon_text.Font = 2
     data.weapon_text.ZIndex = 7
 
@@ -286,10 +416,7 @@ rawset(player_esp, "set_player_esp", newcclosure(function(character: Model)
     data.chams.Adornee = character
     data.chams.Parent = core_gui
 
-    local c1
-    local c2
-
-    c1 = run_service.RenderStepped:Connect(function()
+    data.render_connection = run_service.RenderStepped:Connect(function()
         camera = cloneref(workspace.CurrentCamera)
 
         local localTorso = character:FindFirstChild("torso")
@@ -332,16 +459,44 @@ rawset(player_esp, "set_player_esp", newcclosure(function(character: Model)
             return
         end
 
+        local alpha = get_distance_alpha(distance)
+        local gradientLerp = get_animated_lerp_value()
+        local boxColor = settings.box_color
+        local fillColor = settings.box_fill_color
+
+        if settings.box_gradient then
+            boxColor = settings.box_gradient_color_1:Lerp(settings.box_gradient_color_2, gradientLerp)
+        end
+
+        if settings.box_gradient_fill then
+            fillColor = settings.box_gradient_fill_color_1:Lerp(settings.box_gradient_fill_color_2, gradientLerp)
+        end
+
+        local nameText = character.Name
+        local showDistanceAsText = true
+        if type(settings.distance_position) == "string" then
+            local mode = string.lower(settings.distance_position)
+            showDistanceAsText = mode ~= "name"
+        end
+
+        if settings.distance and not showDistanceAsText then
+            nameText = string.format("%s [%d]", nameText, math.floor(distance))
+        end
+
         data.name_text.Visible = settings.names
         if settings.names then
             data.name_text.Color = settings.name_color
-            data.name_text.Text = character.Name
+            data.name_text.Transparency = alpha
+            data.name_text.Size = settings.font_size
+            data.name_text.Text = nameText
             data.name_text.Position = Vector2.new(minX + (width / 2), minY - 14)
         end
 
-        data.distance_text.Visible = settings.distance
-        if settings.distance then
+        data.distance_text.Visible = settings.distance and showDistanceAsText
+        if settings.distance and showDistanceAsText then
             data.distance_text.Color = settings.distance_color
+            data.distance_text.Transparency = alpha
+            data.distance_text.Size = settings.font_size
             data.distance_text.Text = string.format("[%d]", math.floor(distance))
             data.distance_text.Position = Vector2.new(minX + (width / 2), minY - 1)
         end
@@ -351,6 +506,8 @@ rawset(player_esp, "set_player_esp", newcclosure(function(character: Model)
             local weaponName = find_weapon_name(character)
             if weaponName then
                 data.weapon_text.Color = settings.weapon_color
+                data.weapon_text.Transparency = alpha
+                data.weapon_text.Size = settings.font_size
                 data.weapon_text.Text = weaponName
                 data.weapon_text.Position = Vector2.new(minX + (width / 2), maxY + 2)
             else
@@ -360,21 +517,26 @@ rawset(player_esp, "set_player_esp", newcclosure(function(character: Model)
 
         data.box_outline.Visible = settings.box
         if settings.box then
-            data.box_outline.Color = settings.box_color
+            data.box_outline.Color = boxColor
+            data.box_outline.Transparency = alpha
             data.box_outline.Size = Vector2.new(width, height)
             data.box_outline.Position = Vector2.new(minX, minY)
         end
 
         data.box_fill.Visible = settings.box_filled
         if settings.box_filled then
-            data.box_fill.Color = settings.box_fill_color
-            data.box_fill.Transparency = math.clamp(settings.box_fill_transparency, 0, 1)
+            data.box_fill.Color = fillColor
+            data.box_fill.Transparency = math.clamp(settings.box_fill_transparency, 0, 1) * alpha
             data.box_fill.Size = Vector2.new(width, height)
             data.box_fill.Position = Vector2.new(minX, minY)
         end
 
         if settings.box_corner then
             local cornerColor = settings.box_corner_color
+            if settings.box_gradient then
+                cornerColor = boxColor
+            end
+
             local cornerThickness = settings.box_corner_thickness
             local cornerLength = math.min(settings.box_corner_length, width * 0.4, height * 0.4)
 
@@ -407,26 +569,40 @@ rawset(player_esp, "set_player_esp", newcclosure(function(character: Model)
                 line.Visible = true
                 line.Color = cornerColor
                 line.Thickness = cornerThickness
+                line.Transparency = alpha
             end
         else
             set_visible(data.corner_lines, false)
         end
 
-        if settings.health_bar and data.humanoid and data.humanoid.MaxHealth > 0 then
-            local hp = math.clamp(data.humanoid.Health / data.humanoid.MaxHealth, 0, 1)
-            local barWidth = 3
-            local barHeight = height
-            local barX = minX - 6
-            local barY = minY
+        if settings.health_bar then
+            local hp, max_hp = get_health_values(character, data)
+            if hp and max_hp and max_hp > 0 then
+                local hpRatio = math.clamp(hp / max_hp, 0, 1)
+                if settings.fade_on_death and hpRatio <= 0 then
+                    data.health_bar_outer.Visible = false
+                    data.health_bar_inner.Visible = false
+                else
+                    local barWidth = 3
+                    local barHeight = height
+                    local barX = minX - 6
+                    local barY = minY
 
-            data.health_bar_outer.Visible = true
-            data.health_bar_outer.Size = Vector2.new(barWidth, barHeight)
-            data.health_bar_outer.Position = Vector2.new(barX, barY)
+                    data.health_bar_outer.Visible = true
+                    data.health_bar_outer.Transparency = alpha
+                    data.health_bar_outer.Size = Vector2.new(barWidth, barHeight)
+                    data.health_bar_outer.Position = Vector2.new(barX, barY)
 
-            data.health_bar_inner.Visible = true
-            data.health_bar_inner.Color = Color3.new(1, 0, 0):Lerp(Color3.new(0, 1, 0), hp)
-            data.health_bar_inner.Size = Vector2.new(barWidth - 1, (barHeight - 2) * hp)
-            data.health_bar_inner.Position = Vector2.new(barX + 0.5, barY + (barHeight - 1) - ((barHeight - 2) * hp))
+                    data.health_bar_inner.Visible = true
+                    data.health_bar_inner.Transparency = alpha
+                    data.health_bar_inner.Color = Color3.new(1, 0, 0):Lerp(Color3.new(0, 1, 0), hpRatio)
+                    data.health_bar_inner.Size = Vector2.new(barWidth - 1, (barHeight - 2) * hpRatio)
+                    data.health_bar_inner.Position = Vector2.new(barX + 0.5, barY + (barHeight - 1) - ((barHeight - 2) * hpRatio))
+                end
+            else
+                data.health_bar_outer.Visible = false
+                data.health_bar_inner.Visible = false
+            end
         else
             data.health_bar_outer.Visible = false
             data.health_bar_inner.Visible = false
@@ -447,6 +623,7 @@ rawset(player_esp, "set_player_esp", newcclosure(function(character: Model)
                         line.Visible = true
                         line.Color = settings.skelton_color
                         line.Thickness = settings.skelton_thickness
+                        line.Transparency = alpha
                     else
                         line.Visible = false
                     end
@@ -463,45 +640,44 @@ rawset(player_esp, "set_player_esp", newcclosure(function(character: Model)
             data.chams.Adornee = character
             data.chams.FillColor = settings.chams_fill_color
             data.chams.OutlineColor = settings.chams_outline_color
-            data.chams.FillTransparency = math.clamp(settings.chams_fill_transparency, 0, 1)
-            data.chams.OutlineTransparency = math.clamp(settings.chams_outline_transparency, 0, 1)
+
+            local baseFill = math.clamp(settings.chams_fill_transparency, 0, 1)
+            local baseOutline = math.clamp(settings.chams_outline_transparency, 0, 1)
+
+            if settings.chams_thermal then
+                local breathe = (math.atan(math.sin(tick() * 2)) * 2 / math.pi)
+                data.chams.FillTransparency = math.clamp(baseFill * (1 - (breathe * 0.1)), 0, 1)
+            else
+                data.chams.FillTransparency = baseFill
+            end
+
+            data.chams.OutlineTransparency = baseOutline
             data.chams.DepthMode = settings.chams_visible_check and Enum.HighlightDepthMode.Occluded or Enum.HighlightDepthMode.AlwaysOnTop
         else
             data.chams.Enabled = false
         end
     end)
 
-    c2 = character.AncestryChanged:Connect(function(_, parent)
+    data.ancestry_connection = character.AncestryChanged:Connect(function(_, parent)
         if parent ~= nil then
             return
         end
 
-        if c1 then
-            c1:Disconnect()
+        if settings.fade_on_leave then
+            for i = 5, 0, -1 do
+                local alpha = i / 5
+                data.name_text.Transparency = alpha
+                data.distance_text.Transparency = alpha
+                data.weapon_text.Transparency = alpha
+                data.box_outline.Transparency = alpha
+                data.box_fill.Transparency = alpha
+                set_transparency(data.corner_lines, alpha)
+                set_transparency(data.skeleton_lines, alpha)
+                task.wait(0.02)
+            end
         end
 
-        if c2 then
-            c2:Disconnect()
-        end
-
-        remove_drawing(data.health_bar_inner)
-        remove_drawing(data.health_bar_outer)
-        remove_drawing(data.name_text)
-        remove_drawing(data.distance_text)
-        remove_drawing(data.weapon_text)
-        remove_drawing(data.box_outline)
-        remove_drawing(data.box_fill)
-
-        for _, line in ipairs(data.corner_lines) do
-            remove_drawing(line)
-        end
-
-        for _, line in ipairs(data.skeleton_lines) do
-            remove_drawing(line)
-        end
-
-        destroy_instance(data.chams)
-        has_esp[character] = nil
+        cleanup_esp_entry(character, data)
     end)
 
     has_esp[character] = data
@@ -587,6 +763,18 @@ local function add_object_esp(obj: Instance, color: Color3)
     object_esp[obj] = { box = box, conn = conn }
 end
 
+local function cleanup_object_esp()
+    for obj, state in pairs(object_esp) do
+        if state then
+            if state.conn then
+                state.conn:Disconnect()
+            end
+            remove_drawing(state.box)
+        end
+        object_esp[obj] = nil
+    end
+end
+
 local function track_objects()
     for _, obj in ipairs(workspace:GetChildren()) do
         if obj.Name == "Claymore" then
@@ -627,6 +815,83 @@ rawset(player_esp, "get_player_from_has_esp", newcclosure(function(character)
     return has_esp[character]
 end))
 
+rawset(player_esp, "refresh_esps", newcclosure(function()
+    local viewmodels = workspace:FindFirstChild("Viewmodels")
+    if not viewmodels then
+        return
+    end
+
+    for character, data in pairs(has_esp) do
+        cleanup_esp_entry(character, data)
+    end
+
+    for _, vm in ipairs(viewmodels:GetChildren()) do
+        if should_track_viewmodel(vm) then
+            player_esp.set_player_esp(vm)
+        end
+    end
+end))
+
+rawset(player_esp, "clean_all_esps", newcclosure(function()
+    for character, data in pairs(has_esp) do
+        cleanup_esp_entry(character, data)
+    end
+    cleanup_object_esp()
+end))
+
+rawset(player_esp, "toggle_skeleton", newcclosure(function(enabled)
+    settings.skelton = enabled and true or false
+    if not settings.skelton then
+        for _, data in pairs(has_esp) do
+            set_visible(data.skeleton_lines, false)
+        end
+    end
+end))
+
+rawset(player_esp, "set_skeleton_color", newcclosure(function(color)
+    if typeof(color) ~= "Color3" then
+        return
+    end
+    settings.skelton_color = color
+end))
+
+rawset(player_esp, "set_skeleton_thickness", newcclosure(function(thickness)
+    if type(thickness) ~= "number" or thickness <= 0 then
+        return
+    end
+    settings.skelton_thickness = thickness
+end))
+
+rawset(player_esp, "set_corner_color", newcclosure(function(color)
+    if typeof(color) ~= "Color3" then
+        return
+    end
+    settings.box_corner_color = color
+end))
+
+rawset(player_esp, "set_corner_thickness", newcclosure(function(thickness)
+    if type(thickness) ~= "number" or thickness <= 0 then
+        return
+    end
+    settings.box_corner_thickness = thickness
+end))
+
+rawset(player_esp, "set_corner_length", newcclosure(function(length)
+    if type(length) ~= "number" or length <= 0 then
+        return
+    end
+    settings.box_corner_length = length
+end))
+
+rawset(player_esp, "RefreshESPs", rawget(player_esp, "refresh_esps"))
+rawset(player_esp, "CleanAllESPs", rawget(player_esp, "clean_all_esps"))
+rawset(player_esp, "ToggleSkeleton", rawget(player_esp, "toggle_skeleton"))
+rawset(player_esp, "SetSkeletonColor", rawget(player_esp, "set_skeleton_color"))
+rawset(player_esp, "SetSkeletonThickness", rawget(player_esp, "set_skeleton_thickness"))
+rawset(player_esp, "SetCornerColor", rawget(player_esp, "set_corner_color"))
+rawset(player_esp, "SetCornerThickness", rawget(player_esp, "set_corner_thickness"))
+rawset(player_esp, "SetCornerLength", rawget(player_esp, "set_corner_length"))
+
 rawset(player_esp, "esp_player_settings", settings)
 
 player_esp.init = function()
@@ -647,7 +912,11 @@ player_esp.init = function()
         end
     end
 
-    viewmodels.ChildAdded:Connect(function(vm)
+    if viewmodels_added_connection then
+        viewmodels_added_connection:Disconnect()
+    end
+
+    viewmodels_added_connection = viewmodels.ChildAdded:Connect(function(vm)
         if should_track_viewmodel(vm) then
             player_esp.set_player_esp(vm)
         end
@@ -657,3 +926,4 @@ player_esp.init = function()
 end
 
 return player_esp
+

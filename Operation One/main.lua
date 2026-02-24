@@ -1,25 +1,12 @@
-local ok_http, draw_body = pcall(function()
-    return game:HttpGet("https://raw.githubusercontent.com/mainstreamed/amongus-hook/refs/heads/main/drawingfix.lua", true)
-end)
 
-local draw_loaded = false
-if ok_http and type(draw_body) == "string" and draw_body ~= "" then
-    local draw_chunk = loadstring(draw_body)
-    if draw_chunk then
-        draw_loaded = pcall(draw_chunk)
-    end
-end
+loadstring(game:HttpGet("https://raw.githubusercontent.com/mainstreamed/amongus-hook/refs/heads/main/drawingfix.lua", true))();
 
-if not draw_loaded then
-    warn("[Main] drawingfix failed, continuing without drawingfix")
-    getgenv().drawingLoaded = true
-end
-
-if not game:IsLoaded() then
+if not (game:IsLoaded() and getgenv().drawingLoaded) then
     repeat
         task.wait()
-    until game:IsLoaded()
+    until (game:IsLoaded() and getgenv().drawingLoaded)
 end
+
 do
     if getgenv().loaded then
         return
@@ -29,7 +16,7 @@ do
 
 
    do 
-    local base_url = "https://raw.githubusercontent.com/buhayhayahay332-lang/Compx/main/Operation%20One/" 
+    local base_url = "i will put the links later " 
 
     local includes = {
         "sdk/memory.lua",
@@ -264,10 +251,6 @@ aimbot_groupbox:AddSlider('aimbot_fov_size', {
                     weapon_modifications_settings.instant_ads = value;
                 end});
 
-                weapon_modifications_groupbox:AddSlider('weapon_modifications_instant_ads_speed', {Text = 'ADS Speed', Default = 30, Min = 1, Max = 100, Rounding = 0, Compact = false, Callback = function(Value)
-                    weapon_modifications_settings.instant_ads_speed = (Value / 100);
-                end});
-
                 weapon_modifications_groupbox:AddToggle('weapon_modifications_firerate_bypass', {Text = "Fire Rate Bypass", Default = false, Callback = function(value: boolean)
                     weapon_modifications_settings.firerate_bypass = value;
                 end});
@@ -351,6 +334,18 @@ aimbot_groupbox:AddSlider('aimbot_fov_size', {
             end
         })
 
+        player_esp_groupbox:AddSlider('player_esp_font_size', {
+            Text = 'Font Size',
+            Default = 13,
+            Min = 10,
+            Max = 24,
+            Rounding = 0,
+            Compact = false,
+            Callback = function(value)
+                esp_player_settings.font_size = value
+            end
+        })
+
         local player_esp_distance = player_esp_groupbox:AddToggle('player_esp_distance', {
             Text = "Distance", Default = false,
             Callback = function(value)
@@ -363,6 +358,16 @@ aimbot_groupbox:AddSlider('aimbot_fov_size', {
             Title = "Distance Color",
             Callback = function(value)
                 esp_player_settings.distance_color = value
+            end
+        })
+
+        player_esp_groupbox:AddDropdown('player_esp_distance_position', {
+            Values = {"Text", "Name"},
+            Default = 1,
+            Multi = false,
+            Text = 'Distance Mode',
+            Callback = function(value)
+                esp_player_settings.distance_position = value
             end
         })
 
@@ -400,6 +405,27 @@ aimbot_groupbox:AddSlider('aimbot_fov_size', {
                 esp_player_settings.max_distance = value
             end
         })
+
+        player_esp_groupbox:AddToggle('player_esp_fade_on_distance', {
+            Text = "Fade On Distance", Default = false,
+            Callback = function(value)
+                esp_player_settings.fade_on_distance = value
+            end
+        })
+
+        player_esp_groupbox:AddToggle('player_esp_fade_on_death', {
+            Text = "Fade On Death", Default = false,
+            Callback = function(value)
+                esp_player_settings.fade_on_death = value
+            end
+        })
+
+        player_esp_groupbox:AddToggle('player_esp_fade_on_leave', {
+            Text = "Fade On Leave", Default = false,
+            Callback = function(value)
+                esp_player_settings.fade_on_leave = value
+            end
+        })
     end
 
     local player_esp_visual_groupbox = esp:AddRightGroupbox("Boxes/Chams") do
@@ -418,6 +444,29 @@ aimbot_groupbox:AddSlider('aimbot_fov_size', {
             end
         })
 
+        local player_esp_box_gradient = player_esp_visual_groupbox:AddToggle('player_esp_box_gradient', {
+            Text = "Box Gradient", Default = false,
+            Callback = function(value)
+                esp_player_settings.box_gradient = value
+            end
+        })
+
+        player_esp_box_gradient:AddColorPicker('player_esp_box_gradient_color_1', {
+            Default = Color3.fromRGB(243, 116, 116),
+            Title = "Gradient Color 1",
+            Callback = function(value)
+                esp_player_settings.box_gradient_color_1 = value
+            end
+        })
+
+        player_esp_box_gradient:AddColorPicker('player_esp_box_gradient_color_2', {
+            Default = Color3.fromRGB(0, 0, 0),
+            Title = "Gradient Color 2",
+            Callback = function(value)
+                esp_player_settings.box_gradient_color_2 = value
+            end
+        })
+
         local player_esp_box_fill = player_esp_visual_groupbox:AddToggle('player_esp_box_filled', {
             Text = "Box Fill", Default = false,
             Callback = function(value)
@@ -430,6 +479,29 @@ aimbot_groupbox:AddSlider('aimbot_fov_size', {
             Title = "Box Fill Color",
             Callback = function(value)
                 esp_player_settings.box_fill_color = value
+            end
+        })
+
+        local player_esp_box_gradient_fill = player_esp_visual_groupbox:AddToggle('player_esp_box_gradient_fill', {
+            Text = "Fill Gradient", Default = false,
+            Callback = function(value)
+                esp_player_settings.box_gradient_fill = value
+            end
+        })
+
+        player_esp_box_gradient_fill:AddColorPicker('player_esp_box_gradient_fill_color_1', {
+            Default = Color3.fromRGB(243, 116, 116),
+            Title = "Fill Color 1",
+            Callback = function(value)
+                esp_player_settings.box_gradient_fill_color_1 = value
+            end
+        })
+
+        player_esp_box_gradient_fill:AddColorPicker('player_esp_box_gradient_fill_color_2', {
+            Default = Color3.fromRGB(0, 0, 0),
+            Title = "Fill Color 2",
+            Callback = function(value)
+                esp_player_settings.box_gradient_fill_color_2 = value
             end
         })
 
@@ -481,6 +553,25 @@ aimbot_groupbox:AddSlider('aimbot_fov_size', {
             Compact = false,
             Callback = function(value)
                 esp_player_settings.box_corner_length = value
+            end
+        })
+
+        player_esp_visual_groupbox:AddToggle('player_esp_box_animate', {
+            Text = "Animate Gradient", Default = false,
+            Callback = function(value)
+                esp_player_settings.box_animate = value
+            end
+        })
+
+        player_esp_visual_groupbox:AddSlider('player_esp_box_rotation_speed', {
+            Text = 'Rotate Speed',
+            Default = 300,
+            Min = 1,
+            Max = 1000,
+            Rounding = 0,
+            Compact = false,
+            Callback = function(value)
+                esp_player_settings.box_rotation_speed = value
             end
         })
 
@@ -537,6 +628,13 @@ aimbot_groupbox:AddSlider('aimbot_fov_size', {
                 esp_player_settings.chams_visible_check = value
             end
         })
+
+        player_esp_visual_groupbox:AddToggle('player_esp_chams_thermal', {
+            Text = "Thermal Chams", Default = false,
+            Callback = function(value)
+                esp_player_settings.chams_thermal = value
+            end
+        })
     end
 
     local object_esp_groupbox = esp:AddRightGroupbox("Gadgets") do
@@ -567,6 +665,30 @@ aimbot_groupbox:AddSlider('aimbot_fov_size', {
             Title = "Drone Color",
             Callback = function(value)
                 esp_player_settings.drone_color = value
+            end
+        })
+
+        object_esp_groupbox:AddButton({
+            Text = 'Refresh ESP',
+            DoubleClick = false,
+            Func = function()
+                if type(RefreshESPs) == "function" then
+                    RefreshESPs()
+                elseif type(refresh_esps) == "function" then
+                    refresh_esps()
+                end
+            end
+        })
+
+        object_esp_groupbox:AddButton({
+            Text = 'Clean ESP',
+            DoubleClick = false,
+            Func = function()
+                if type(CleanAllESPs) == "function" then
+                    CleanAllESPs()
+                elseif type(clean_all_esps) == "function" then
+                    clean_all_esps()
+                end
             end
         })
     end
@@ -658,6 +780,4 @@ aimbot_groupbox:AddSlider('aimbot_fov_size', {
     end;
 
     getgenv().loaded = true;
-
-end
 
