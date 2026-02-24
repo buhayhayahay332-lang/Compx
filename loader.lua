@@ -2,7 +2,6 @@ pcall(coroutine.yield, true, 1, game)
 pcall(coroutine.yield, true, 2, workspace)
 pcall(coroutine.yield, true, 3, script)
 
--- Fetch remote configuration for the current game
 local defaultScriptUrl = "https://raw.githubusercontent.com/buhayhayahay332-lang/Compx/main/Operation%20One/main.lua"
 local configCandidates = {
     "https://raw.githubusercontent.com/buhayhayahay332-lang/Compx/main/Operation%20One/config.lua"
@@ -44,16 +43,12 @@ if type(gameConfig) ~= "table" then
     gameConfig = {}
 end
 
--- Get the local player
 local localPlayer = game:GetService('Players').LocalPlayer
 
--- Check debug flag for parallel Lua execution
 pcall(getfflag, 'DebugRunParallelLuaOnMainThread')
 
--- Store bypass version from config
 local bypassVersion = gameConfig.bypass_ver or "unknown"
 
--- Check if current game version matches expected version
 local isVersionMatch = (gameConfig.pid == nil) or (game.PlaceVersion == gameConfig.pid)
 
 if not isVersionMatch then

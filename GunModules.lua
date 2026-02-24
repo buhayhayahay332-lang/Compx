@@ -1,4 +1,3 @@
---// dont worry about this is just a dump
 local v1 = game:GetService("RunService")
 local v_u_2 = require(script.Parent)
 local v_u_3 = {}
