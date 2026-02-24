@@ -256,7 +256,10 @@ local function get_mapped_humanoid(character, data)
 
     local now = tick()
     if now - (data.last_health_map_scan or 0) < 0.35 then
-        return data.mapped_humanoid
+        if data.mapped_humanoid and data.mapped_humanoid.Parent and data.mapped_humanoid.MaxHealth > 0 then
+            return data.mapped_humanoid
+        end
+        return nil
     end
     data.last_health_map_scan = now
 
@@ -294,7 +297,14 @@ local function get_mapped_humanoid(character, data)
     if closestHumanoid and (maxMatchDistance <= 0 or closestDistance <= maxMatchDistance) then
         data.mapped_player = closestPlayer
         data.mapped_humanoid = closestHumanoid
+        data.last_health_map_valid = now
         return closestHumanoid
+    end
+
+    if data.mapped_humanoid and data.mapped_humanoid.Parent and data.mapped_humanoid.MaxHealth > 0 then
+        if now - (data.last_health_map_valid or 0) <= 1.0 then
+            return data.mapped_humanoid
+        end
     end
 
     data.mapped_player = nil
@@ -1030,6 +1040,7 @@ player_esp.init = function()
 end
 
 return player_esp
+
 
 
 
