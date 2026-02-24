@@ -8,7 +8,8 @@ local settings = {
     firerate_bypass = false,
     firerate_step = 0.01,
     force_auto = false,
-    instant_ads = false
+    instant_ads = false,
+    instant_ads_speed = 0.30
 };
 local initialized = false
 
@@ -25,6 +26,7 @@ weapon_modifications.init = function()
     local old_os_clock = clonefunction(os.clock);
     local fire_clock_boost = 0
     local force_auto_applied = false
+    local unpack_fn = table.unpack or unpack
 
     hook_function(TweenInfo.new, newcclosure(function(...)
         local caller3 = debug.info(3, "n")
@@ -51,17 +53,30 @@ weapon_modifications.init = function()
         end
 
         if settings.instant_ads then
-            if caller3 == "update_sight_lens" or caller3 == "sights" then
+            local ads_duration = math.max(settings.instant_ads_speed, 0.001)
+            local ads3 = (caller3 == "update_sight_lens" or caller3 == "sights")
+            local ads4 = (caller4 == "update_sight_lens" or caller4 == "sights")
+
+            if ads3 then
                 local t = debug.getstack(3, 3)
                 if type(t) == "number" then
-                    debug.setstack(3, 3, 0.001)
+                    debug.setstack(3, 3, ads_duration)
                 end
             end
-            if caller4 == "update_sight_lens" or caller4 == "sights" then
+
+            if ads4 then
                 local t = debug.getstack(4, 3)
                 if type(t) == "number" then
-                    debug.setstack(4, 3, 0.001)
+                    debug.setstack(4, 3, ads_duration)
                 end
+            end
+
+            if ads3 or ads4 then
+                local args = { ... }
+                if type(args[1]) == "number" then
+                    args[1] = ads_duration
+                end
+                return old_tweenInfo_new(unpack_fn(args))
             end
         end
 
