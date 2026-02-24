@@ -1,4 +1,3 @@
---// the gun mods should go here u know the vibe transfer, keep the code structe. 
 local weapon_modifications = {};
 local settings = {
     recoil_x = 1,

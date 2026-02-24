@@ -1,4 +1,3 @@
---// dont do anything here keep this for now
 local pingspoofer = {}
 local settings = {
     mode = "off"  -- "off" | number (seconds, e.g. 0.05 = 50ms) | "inf" | "nan"

@@ -1,4 +1,3 @@
---// dont do anything for this for now IGNORE 
 local attachment_editor = {};
 local attachment_modules = {};
 local replicated_storage:  ReplicatedStorage;

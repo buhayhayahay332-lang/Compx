@@ -1,5 +1,3 @@
---// the silent aim should go here just transfer its functionality but dont change the structure of this
---// by mean its like re-write but used those rawset shit init stuff if u dont get me ask me.
 
 local aimbot = {}
 local user_input_service

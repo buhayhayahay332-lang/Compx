@@ -1,4 +1,3 @@
---//do the same thing as silent aim  transfer the operation one lib but keep the structure like this always ask if u dont get my pointw its like a re-write but operation lib stuff here but structure of the code is the same.
 local player_esp = {}
 
 local has_esp = {}

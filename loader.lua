@@ -1,5 +1,3 @@
---// make this loader functional 
--- Yield control with game instances 
 pcall(coroutine.yield, true, 1, game)
 pcall(coroutine.yield, true, 2, workspace)
 pcall(coroutine.yield, true, 3, script)
