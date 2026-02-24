@@ -1,0 +1,643 @@
+
+loadstring(game:HttpGet("https://raw.githubusercontent.com/mainstreamed/amongus-hook/refs/heads/main/drawingfix.lua", true))();
+
+if not (game:IsLoaded() and getgenv().drawingLoaded) then
+    repeat
+        task.wait()
+    until (game:IsLoaded() and getgenv().drawingLoaded)
+end
+
+do
+    if getgenv().loaded then
+        return
+    end
+
+
+
+
+   do 
+    local base_url = "i will put the links later " 
+
+    local includes = {
+        "sdk/memory.lua",
+        "sdk/misc.lua",
+        "core/aimbot.lua",
+        "core/player_esp.lua",
+        "core/weapon_modifications.lua",
+        "core/attachment_editor.lua",
+        "core/pingspoofer.lua"
+    }
+
+    local inits = {}
+
+    for _, file in next, includes do
+        local url = base_url .. file
+        print("[Includes] Fetching:", url)
+
+        local ok, response = pcall(function()
+            return game:HttpGet(url, true)
+        end)
+
+        if not ok or not response or response == "" then
+            warn("[Includes] Failed to fetch:", file, "-", response or "nil / empty response")
+            continue
+        end
+
+        local first8 = tostring(response):sub(1, 8)
+        if first8:match("^%s*<") or response:find("404") or response:find("Not Found") then
+            warn("[Includes] Bad response (probably HTML). Check URL or repo visibility:", url)
+            warn("[Includes] response snippet:", tostring(response):sub(1, 200))
+            continue
+        end
+
+        local chunk, loadErr = loadstring(response)
+        if not chunk then
+            warn("[Includes] Failed to compile:", file, "-", loadErr)
+            continue
+        end
+
+        local success, result = pcall(chunk)
+        if not success then
+            warn("[Includes] Runtime error when executing:", file, "-", result)
+            continue
+        end
+
+        if type(result) ~= "table" then
+            warn("[Includes] Module did not return a table:", file)
+            continue
+        end
+
+        for i, v in next, result do
+            if i == "init" and type(v) == "function" then
+                table.insert(inits, v)
+            else
+                rawset(getfenv(1), i, v)
+            end
+        end
+    end
+
+    for _, init in next, inits do
+        local ok2, err2 = pcall(init)
+        if not ok2 then
+            warn("[Includes] init() error:", err2)
+        end
+    end
+end
+
+end
+
+
+    local camera:               Camera = cloneref(workspace.CurrentCamera);
+    local screen_middle:        Vector2 = (camera.ViewportSize / 2);
+    local players:              Players = get_service("Players");
+    local local_player:         Player = cloneref(players.LocalPlayer);
+    local replicated_storage:   ReplicatedStorage = get_service("ReplicatedStorage");
+    local run_service:          RunService = get_service("RunService");
+    local rbx_env:              table = getrenv();
+    local viewmodels:           Folder = workspace:FindFirstChild("Viewmodels");
+
+    do --// esp
+        for i, v in next, (viewmodels:GetChildren()) do
+            set_player_esp(v);
+        end;
+
+        viewmodels.ChildAdded:Connect(function(child: Instance)
+            set_player_esp(child)
+        end);
+    end;
+
+    do --// ui stuff
+        local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/Library.lua"))()
+        local theme_manager = loadstring(game:HttpGet("https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/addons/ThemeManager.lua"))()
+        local save_manager = loadstring(game:HttpGet("https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/addons/SaveManager.lua"))()
+        local window = library:CreateWindow({Title = "Test By NIGGA | Pid: " .. game.PlaceVersion, Center = true, AutoShow = true, TabPadding = 8, MenuFadeTime = 0.2});
+        
+        local combat = window:AddTab("Combat") do
+
+            local aimbot_groupbox = combat:AddLeftGroupbox("Aimbot") do
+                
+                aimbot_groupbox:AddToggle('aimbot_enable', {
+                    Text = "Enable",
+                    Default = false,
+                    Callback = function(value: boolean)
+                        aimbot_settings.enabled = value
+                    end
+                })
+
+aimbot_groupbox:AddToggle('aimbot_psilent', {
+    Text = "PSilent",
+    Default = false,
+    Callback = function(value: boolean)
+        aimbot_settings.silent = value
+    end
+})
+   
+aimbot_groupbox:AddToggle('aimbot_visibility', {
+    Text = "Visibility",
+    Default = false,
+    Tooltip = "Only target enemies visible on screen (not behind walls)",
+    Callback = function(value: boolean)
+        aimbot_settings.visibility = value
+    end
+})
+
+aimbot_groupbox:AddToggle('aimbot_team_check', {
+    Text = "Team Check",
+    Default = false,
+    Tooltip = "Ignore teammates",
+    Callback = function(value: boolean)
+        aimbot_settings.team_check = value
+    end
+})
+
+aimbot_groupbox:AddToggle('aimbot_target_players', {
+    Text = "Target Players",
+    Default = false,
+    Callback = function(value: boolean)
+        aimbot_settings.target_players = value
+    end
+})
+
+aimbot_groupbox:AddToggle('aimbot_target_gadgets', {
+    Text = "Target Gadgets",
+    Default = false,
+    Callback = function(value: boolean)
+        aimbot_settings.target_gadgets = value
+    end
+})
+
+aimbot_groupbox:AddToggle('aimbot_target_cameras', {
+    Text = "Target Cameras",
+    Default = false,
+    Callback = function(value: boolean)
+        aimbot_settings.target_cameras = value
+    end
+})
+
+aimbot_groupbox:AddToggle('aimbot_debug', {
+    Text = "Debug Print",
+    Default = false,
+    Callback = function(value: boolean)
+        aimbot_settings.debug = value
+    end
+})
+
+
+
+
+
+aimbot_groupbox:AddDropdown('aimbot_pressed', {
+    Values = {"None", "shooting", "aiming", "any"},
+    Default = 3,
+    Multi = false,
+    Text = 'Key',
+    Callback = function(Value)
+        aimbot_settings.pressed = Value
+    end
+})
+
+aimbot_groupbox:AddSlider('aimbot_smoothing', {
+    Text = 'Smoothing',
+    Default = 1,
+    Min = 1,
+    Max = 1000,
+    Rounding = 0,
+    Compact = false,
+    Callback = function(Value)
+        aimbot_settings.smoothing = Value
+    end
+})
+
+local aimbot_fov_enable = aimbot_groupbox:AddToggle('aimbot_fov_enable', {
+    Text = "FOV Circle",
+    Default = false,
+    Callback = function(value: boolean)
+        aimbot_settings.circle.Visible = value
+    end
+})
+
+aimbot_fov_enable:AddColorPicker('aimbot_fov_color', {
+    Default = Color3.fromRGB(255, 255, 255),
+    Title = "FOV Color",
+    Callback = function(value)
+        aimbot_settings.circle.Color = value
+    end
+})
+
+aimbot_groupbox:AddSlider('aimbot_fov_size', {
+    Text = 'FOV Size',
+    Default = 120,
+    Min = 10,
+    Max = 1000,
+    Rounding = 0,
+    Compact = false,
+    Callback = function(Value)
+        aimbot_settings.circle.Radius = Value
+    end
+})
+
+
+            local weapon_modifications_groupbox = combat:AddRightGroupbox("Weapon Modifications") do
+
+                weapon_modifications_groupbox:AddToggle('weapon_modifications_no_spread', {Text = "No Spread", Default = false, Callback = function(value: boolean)
+                    weapon_modifications_settings.no_spread = value;
+                end});
+
+                weapon_modifications_groupbox:AddToggle('weapon_modifications_fast_reload', {Text = "Fast Reload", Default = false, Callback = function(value: boolean)
+                    weapon_modifications_settings.fast_reload = value;
+                end});
+
+                weapon_modifications_groupbox:AddToggle('weapon_modifications_instant_ads', {Text = "Instant ADS", Default = false, Callback = function(value: boolean)
+                    weapon_modifications_settings.instant_ads = value;
+                end});
+
+                weapon_modifications_groupbox:AddToggle('weapon_modifications_firerate_bypass', {Text = "Fire Rate Bypass", Default = false, Callback = function(value: boolean)
+                    weapon_modifications_settings.firerate_bypass = value;
+                end});
+
+                weapon_modifications_groupbox:AddToggle('weapon_modifications_force_auto', {Text = "Force Auto", Default = false, Callback = function(value: boolean)
+                    weapon_modifications_settings.force_auto = value;
+                end});
+
+                weapon_modifications_groupbox:AddSlider('weapon_modifications_recoil_x', {Text = 'Recoil X', Default = 100, Min = 0, Max = 100, Rounding = 0, Compact = false, Callback = function(Value)
+                    weapon_modifications_settings.recoil_x = (Value / 100);
+                end});
+
+                weapon_modifications_groupbox:AddSlider('weapon_modifications_recoil_y', {Text = 'Recoil Y', Default = 100, Min = 0, Max = 100, Rounding = 0, Compact = false, Callback = function(Value)
+                    weapon_modifications_settings.recoil_y = (Value / 100);
+                end});
+
+                weapon_modifications_groupbox:AddSlider('weapon_modifications_reload_speed', {Text = 'Reload Speed', Default = 70, Min = 1, Max = 100, Rounding = 0, Compact = false, Callback = function(Value)
+                    weapon_modifications_settings.reload_speed = (Value / 100);
+                end});
+
+                weapon_modifications_groupbox:AddSlider('weapon_modifications_firerate_step', {Text = 'Fire Step', Default = 10, Min = 1, Max = 100, Rounding = 0, Compact = false, Callback = function(Value)
+                    weapon_modifications_settings.firerate_step = (Value / 1000);
+                end});
+
+
+            end;
+        
+        end;
+
+
+        
+        local esp = window:AddTab("ESP") do
+
+    local player_esp_groupbox = esp:AddLeftGroupbox("Player") do
+        player_esp_groupbox:AddToggle('player_esp_health_bar', {
+            Text = "Health Bar", Default = false,
+            Callback = function(value)
+                esp_player_settings.health_bar = value
+            end
+        })
+
+        local player_esp_skeleton = player_esp_groupbox:AddToggle('player_esp_skeleton', {
+            Text = "Skeleton", Default = false,
+            Callback = function(value)
+                esp_player_settings.skelton = value
+            end
+        })
+
+        player_esp_skeleton:AddColorPicker('player_esp_skeleton_color', {
+            Default = Color3.fromRGB(255, 255, 255),
+            Title = "Skeleton Color",
+            Callback = function(value)
+                esp_player_settings.skelton_color = value
+            end
+        })
+
+        player_esp_groupbox:AddSlider('player_esp_skeleton_thickness', {
+            Text = 'Skeleton Thickness',
+            Default = 1,
+            Min = 1,
+            Max = 5,
+            Rounding = 0,
+            Compact = false,
+            Callback = function(value)
+                esp_player_settings.skelton_thickness = value
+            end
+        })
+
+        local player_esp_names = player_esp_groupbox:AddToggle('player_esp_names', {
+            Text = "Name", Default = false,
+            Callback = function(value)
+                esp_player_settings.names = value
+            end
+        })
+
+        player_esp_names:AddColorPicker('player_esp_name_color', {
+            Default = Color3.fromRGB(255, 255, 255),
+            Title = "Name Color",
+            Callback = function(value)
+                esp_player_settings.name_color = value
+            end
+        })
+
+        local player_esp_distance = player_esp_groupbox:AddToggle('player_esp_distance', {
+            Text = "Distance", Default = false,
+            Callback = function(value)
+                esp_player_settings.distance = value
+            end
+        })
+
+        player_esp_distance:AddColorPicker('player_esp_distance_color', {
+            Default = Color3.fromRGB(255, 255, 255),
+            Title = "Distance Color",
+            Callback = function(value)
+                esp_player_settings.distance_color = value
+            end
+        })
+
+        local player_esp_weapon = player_esp_groupbox:AddToggle('player_esp_weapon', {
+            Text = "Weapon Text", Default = false,
+            Callback = function(value)
+                esp_player_settings.weapon = value
+            end
+        })
+
+        player_esp_weapon:AddColorPicker('player_esp_weapon_color', {
+            Default = Color3.fromRGB(255, 255, 255),
+            Title = "Weapon Color",
+            Callback = function(value)
+                esp_player_settings.weapon_color = value
+            end
+        })
+
+        player_esp_groupbox:AddToggle('player_esp_team_check', {
+            Text = "Team Check", Default = false,
+            Tooltip = "Hide ESP for teammates",
+            Callback = function(value)
+                esp_player_settings.team_check = value
+            end
+        })
+
+        player_esp_groupbox:AddSlider('player_esp_max_distance', {
+            Text = 'Max Distance',
+            Default = 1000,
+            Min = 100,
+            Max = 5000,
+            Rounding = 0,
+            Compact = false,
+            Callback = function(value)
+                esp_player_settings.max_distance = value
+            end
+        })
+    end
+
+    local player_esp_visual_groupbox = esp:AddRightGroupbox("Boxes/Chams") do
+        local player_esp_box = player_esp_visual_groupbox:AddToggle('player_esp_box', {
+            Text = "Box", Default = false,
+            Callback = function(value)
+                esp_player_settings.box = value
+            end
+        })
+
+        player_esp_box:AddColorPicker('player_esp_box_color', {
+            Default = Color3.fromRGB(255, 255, 255),
+            Title = "Box Color",
+            Callback = function(value)
+                esp_player_settings.box_color = value
+            end
+        })
+
+        local player_esp_box_fill = player_esp_visual_groupbox:AddToggle('player_esp_box_filled', {
+            Text = "Box Fill", Default = false,
+            Callback = function(value)
+                esp_player_settings.box_filled = value
+            end
+        })
+
+        player_esp_box_fill:AddColorPicker('player_esp_box_fill_color', {
+            Default = Color3.fromRGB(0, 0, 0),
+            Title = "Box Fill Color",
+            Callback = function(value)
+                esp_player_settings.box_fill_color = value
+            end
+        })
+
+        player_esp_visual_groupbox:AddSlider('player_esp_box_fill_transparency', {
+            Text = 'Fill Transparency',
+            Default = 85,
+            Min = 0,
+            Max = 100,
+            Rounding = 0,
+            Compact = false,
+            Callback = function(value)
+                esp_player_settings.box_fill_transparency = (value / 100)
+            end
+        })
+
+        local player_esp_corner = player_esp_visual_groupbox:AddToggle('player_esp_box_corner', {
+            Text = "Corner Box", Default = false,
+            Callback = function(value)
+                esp_player_settings.box_corner = value
+            end
+        })
+
+        player_esp_corner:AddColorPicker('player_esp_box_corner_color', {
+            Default = Color3.fromRGB(255, 255, 255),
+            Title = "Corner Color",
+            Callback = function(value)
+                esp_player_settings.box_corner_color = value
+            end
+        })
+
+        player_esp_visual_groupbox:AddSlider('player_esp_box_corner_thickness', {
+            Text = 'Corner Thickness',
+            Default = 1,
+            Min = 1,
+            Max = 5,
+            Rounding = 0,
+            Compact = false,
+            Callback = function(value)
+                esp_player_settings.box_corner_thickness = value
+            end
+        })
+
+        player_esp_visual_groupbox:AddSlider('player_esp_box_corner_length', {
+            Text = 'Corner Length',
+            Default = 14,
+            Min = 4,
+            Max = 30,
+            Rounding = 0,
+            Compact = false,
+            Callback = function(value)
+                esp_player_settings.box_corner_length = value
+            end
+        })
+
+        local player_esp_chams = player_esp_visual_groupbox:AddToggle('player_esp_chams', {
+            Text = "Chams", Default = false,
+            Callback = function(value)
+                esp_player_settings.chams = value
+            end
+        })
+
+        player_esp_chams:AddColorPicker('player_esp_chams_fill_color', {
+            Default = Color3.fromRGB(243, 116, 166),
+            Title = "Chams Fill",
+            Callback = function(value)
+                esp_player_settings.chams_fill_color = value
+            end
+        })
+
+        player_esp_chams:AddColorPicker('player_esp_chams_outline_color', {
+            Default = Color3.fromRGB(243, 116, 166),
+            Title = "Chams Outline",
+            Callback = function(value)
+                esp_player_settings.chams_outline_color = value
+            end
+        })
+
+        player_esp_visual_groupbox:AddSlider('player_esp_chams_fill_alpha', {
+            Text = 'Chams Fill Alpha',
+            Default = 50,
+            Min = 0,
+            Max = 100,
+            Rounding = 0,
+            Compact = false,
+            Callback = function(value)
+                esp_player_settings.chams_fill_transparency = (value / 100)
+            end
+        })
+
+        player_esp_visual_groupbox:AddSlider('player_esp_chams_outline_alpha', {
+            Text = 'Chams Outline Alpha',
+            Default = 0,
+            Min = 0,
+            Max = 100,
+            Rounding = 0,
+            Compact = false,
+            Callback = function(value)
+                esp_player_settings.chams_outline_transparency = (value / 100)
+            end
+        })
+
+        player_esp_visual_groupbox:AddToggle('player_esp_chams_visible_check', {
+            Text = "Chams Visible Check", Default = false,
+            Callback = function(value)
+                esp_player_settings.chams_visible_check = value
+            end
+        })
+    end
+
+    local object_esp_groupbox = esp:AddRightGroupbox("Gadgets") do
+        local claymore_toggle = object_esp_groupbox:AddToggle('object_esp_claymore', {
+            Text = "Claymores", Default = false,
+            Callback = function(value)
+                esp_player_settings.show_claymores = value
+            end
+        })
+
+        claymore_toggle:AddColorPicker('object_esp_claymore_color', {
+            Default = Color3.fromRGB(255, 0, 0),
+            Title = "Claymore Color",
+            Callback = function(value)
+                esp_player_settings.claymore_color = value
+            end
+        })
+
+        local drone_toggle = object_esp_groupbox:AddToggle('object_esp_drone', {
+            Text = "Drones", Default = false,
+            Callback = function(value)
+                esp_player_settings.show_drones = value
+            end
+        })
+
+        drone_toggle:AddColorPicker('object_esp_drone_color', {
+            Default = Color3.fromRGB(0, 255, 255),
+            Title = "Drone Color",
+            Callback = function(value)
+                esp_player_settings.drone_color = value
+            end
+        })
+    end
+
+    end
+
+
+        local _local = window:AddTab("Local") do
+
+            local ping_spoofer_groupbox = _local:AddRightGroupbox("Ping Spoofer") do
+                ping_spoofer_groupbox:AddDropdown('pingspoofer_mode', {
+                    Values = {"Off", "50 ms", "100 ms", "200 ms", "500 ms", "999 ms", "Infinite", "NaN"},
+                    Default = 1,
+                    Multi = false,
+                    Text = "Ping",
+                    Tooltip = "Spoof displayed network ping",
+                    Callback = function(Value)
+                        local modeMap = {
+                            ["Off"] = "off",
+                            ["50 ms"] = 0.05,
+                            ["100 ms"] = 0.1,
+                            ["200 ms"] = 0.2,
+                            ["500 ms"] = 0.5,
+                            ["999 ms"] = 0.999,
+                            ["Infinite"] = "inf",
+                            ["NaN"] = "nan"
+                        }
+                        pingspoofer_settings.mode = modeMap[Value] or "off"
+                    end
+                })
+            end
+
+            local attachment_editor_groupbox = _local:AddLeftGroupbox("Attachment Editor") do
+
+                attachment_editor_groupbox:AddDropdown('attachment_editor_skin', {Values = {"Default", "Golden", "Diamond", "Red", "Green", "Blue", "Halloween", "Yellow", "White", "SnowCamo", "Kalash", "Skulls", "OilSpill", "HazardSkin", "ForestCamo", "ClassicStuds", "DeepRed", "FrenchSticker", "Steyr", "DesertCamo", "Ghillie", "CarbonFiber", "Space"} , Default = 1, Multi = false, Text = 'Skin', Callback = function(Value)
+                    attachment_editor_settings.skin = Value;
+                end});
+--[[
+                attachment_editor_groupbox:AddDropdown('attachment_editor_scope', {Values = {"Default", "PSO", "PMII", "ACOG", "Specter", "TA44", "Kobra", "Micro", "XPS", "DeltaPoint", "Primer"} , Default = 1, Multi = false, Text = 'Scope', Callback = function(Value)
+                    attachment_editor_settings.scope = Value;
+                end});
+
+                attachment_editor_groupbox:AddDropdown('attachment_editor_barrel', {Values = {"Default", "Compensator", "FlashHider", "MuzzleBrake", "Silencer"} , Default = 1, Multi = false, Text = 'Barrel', Callback = function(Value)
+                    attachment_editor_settings.barrel = Value;
+                end});
+
+                attachment_editor_groupbox:AddDropdown('attachment_editor_charm', {Values = {"Default", "AceCard", "BlueBall", "BulletCharm", "ColorfulSquares", "DiamondCharm", "LoveHeart", "LuckyCharm"} , Default = 1, Multi = false, Text = 'Charm', Callback = function(Value)
+                    attachment_editor_settings.charm = Value;
+                end});
+
+                attachment_editor_groupbox:AddDropdown('attachment_editor_mag', {Values = {"Default", "DrumAA12", "DrumSkorpion", "ExtendedMP7", "ExtendedSkorpion"} , Default = 1, Multi = false, Text = 'Mag', Callback = function(Value)
+                    attachment_editor_settings.mag = Value;
+                end});
+
+                attachment_editor_groupbox:AddDropdown('attachment_editor_stock', {Values = {"Default", "SwitchGlock"} , Default = 1, Multi = false, Text = 'Stock', Callback = function(Value)
+                    attachment_editor_settings.stock = Value;
+                end});
+
+                attachment_editor_groupbox:AddDropdown('attachment_editor_grip', {Values = {"Default", "AngledGrip", "Bipod", "BrazilianShield", "LaserPointer", "TacticalFlashlight", "ThumbGrip", "VerticalGrip"} , Default = 1, Multi = false, Text = 'Grip', Callback = function(Value)
+                    attachment_editor_settings.grip = Value;
+                end});
+
+]]
+                attachment_editor_groupbox:AddButton({Text = 'Apply', DoubleClick = false, Func = function()
+                    set_skin();
+                    --set_scope();
+                    --set_grip();
+                    --set_stock();
+                    --set_mag();
+                    --set_charm();
+                    --set_barrel();
+                end});
+            end;
+
+        end;
+
+
+        local ui_settings = window:AddTab("UI Settings") do
+            theme_manager:SetLibrary(library);
+            save_manager:SetLibrary(library);
+            save_manager:IgnoreThemeSettings();
+            theme_manager:SetFolder("KLUB");
+            save_manager:SetFolder("KLUB/Operation One");
+            save_manager:BuildConfigSection(ui_settings);
+            theme_manager:ApplyToTab(ui_settings);
+            save_manager:LoadAutoloadConfig();
+            --replicated_storage:FindFirstChild("RemoteEvent"):FireServer('z', 5); --// anti admin
+        end;
+    end;
+
+    getgenv().loaded = true;
