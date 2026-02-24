@@ -77,6 +77,23 @@ local teamHighlightCache = {}
 local lastCacheUpdate = 0
 local CACHE_UPDATE_INTERVAL = 0.5
 local ESP_CHAMS_TAG = "__op1_esp_chams"
+local healthCandidatesCache = {}
+local lastHealthCandidatesUpdate = 0
+local HEALTH_CANDIDATES_UPDATE_INTERVAL = 0.2
+local PART_REFRESH_INTERVAL = 0.3
+local WEAPON_SCAN_INTERVAL = 0.2
+local TRACKED_VIEWMODEL_PARTS = {
+    "head",
+    "torso",
+    "shoulder1",
+    "shoulder2",
+    "arm1",
+    "arm2",
+    "hip1",
+    "hip2",
+    "leg1",
+    "leg2",
+}
 
 local function updateTeamHighlightCache()
     teamHighlightCache = {}
@@ -150,51 +167,194 @@ local function set_transparency(drawings, alpha)
     end
 end
 
-local function find_weapon_name(character)
+local function refresh_viewmodel_parts(character, data, force)
+    if not data then
+        return {}
+    end
+
+    local now = tick()
+    if (not force) and data.cached_parts and (now - (data.last_part_refresh or 0) < PART_REFRESH_INTERVAL) then
+        return data.cached_parts
+    end
+
+    local cached = data.cached_parts or {}
+    for _, partName in ipairs(TRACKED_VIEWMODEL_PARTS) do
+        local part = character:FindFirstChild(partName)
+        if part and part:IsA("BasePart") then
+            cached[partName] = part
+        else
+            cached[partName] = nil
+        end
+    end
+
+    data.cached_parts = cached
+    data.last_part_refresh = now
+    return cached
+end
+
+local function find_weapon_name(character, data)
     if not character then
         return nil
     end
 
+    if data then
+        local now = tick()
+        if now - (data.last_weapon_scan or 0) < WEAPON_SCAN_INTERVAL then
+            return data.cached_weapon_name
+        end
+
+        data.last_weapon_scan = now
+        data.cached_weapon_name = nil
+    end
+
     for _, child in ipairs(character:GetChildren()) do
         if child:IsA("Model") and child:GetAttribute("item_type") then
+            if data then
+                data.cached_weapon_name = child.Name
+            end
             return child.Name
         end
+    end
+
+    if data then
+        data.cached_weapon_name = nil
     end
 
     return nil
 end
 
-local function get_bounds_2d(character)
-    local cf, size = character:GetBoundingBox()
-    local corners = {
-        cf * Vector3.new(-size.X / 2, -size.Y / 2, -size.Z / 2),
-        cf * Vector3.new(-size.X / 2, -size.Y / 2, size.Z / 2),
-        cf * Vector3.new(-size.X / 2, size.Y / 2, -size.Z / 2),
-        cf * Vector3.new(-size.X / 2, size.Y / 2, size.Z / 2),
-        cf * Vector3.new(size.X / 2, -size.Y / 2, -size.Z / 2),
-        cf * Vector3.new(size.X / 2, -size.Y / 2, size.Z / 2),
-        cf * Vector3.new(size.X / 2, size.Y / 2, -size.Z / 2),
-        cf * Vector3.new(size.X / 2, size.Y / 2, size.Z / 2),
-    }
-
-    local minX, minY = math.huge, math.huge
-    local maxX, maxY = -math.huge, -math.huge
-    local visible = false
-
-    for _, corner in ipairs(corners) do
-        local sp, on = camera:WorldToViewportPoint(corner)
-        if on and sp.Z > 0 then
-            visible = true
-            minX = math.min(minX, sp.X)
-            minY = math.min(minY, sp.Y)
-            maxX = math.max(maxX, sp.X)
-            maxY = math.max(maxY, sp.Y)
-        end
+local function project_world_point(worldPoint)
+    local projected, onScreen = camera:WorldToViewportPoint(worldPoint)
+    if onScreen and projected.Z > 0 then
+        return projected
     end
+    return nil
+end
 
-    if not visible then
+local function get_bounds_2d(character, data)
+    local parts = refresh_viewmodel_parts(character, data)
+    local torso = parts.torso
+    if not torso or not torso:IsA("BasePart") then
         return nil
     end
+
+    local center2d = project_world_point(torso.Position)
+    if not center2d then
+        return nil
+    end
+
+    local minY = nil
+    local maxY = nil
+    local minX = nil
+    local maxX = nil
+
+    local function push_height_point(worldPoint)
+        local screenPos = project_world_point(worldPoint)
+        if screenPos then
+            if not minY or screenPos.Y < minY then
+                minY = screenPos.Y
+            end
+            if not maxY or screenPos.Y > maxY then
+                maxY = screenPos.Y
+            end
+            return true
+        end
+        return false
+    end
+
+    local function push_width_point(worldPoint)
+        local screenPos = project_world_point(worldPoint)
+        if screenPos then
+            if not minX or screenPos.X < minX then
+                minX = screenPos.X
+            end
+            if not maxX or screenPos.X > maxX then
+                maxX = screenPos.X
+            end
+            return true
+        end
+        return false
+    end
+
+    local torsoUp = torso.CFrame.UpVector
+    local torsoRight = torso.CFrame.RightVector
+
+    push_height_point(torso.Position + (torsoUp * (torso.Size.Y * 0.6)))
+    push_height_point(torso.Position - (torsoUp * (torso.Size.Y * 0.6)))
+
+    local head = parts.head
+    if head and head:IsA("BasePart") then
+        push_height_point(head.Position + (head.CFrame.UpVector * (head.Size.Y * 0.6)))
+    end
+
+    local leg1 = parts.leg1
+    if leg1 and leg1:IsA("BasePart") then
+        push_height_point(leg1.Position - (leg1.CFrame.UpVector * (leg1.Size.Y * 0.6)))
+    end
+
+    local leg2 = parts.leg2
+    if leg2 and leg2:IsA("BasePart") then
+        push_height_point(leg2.Position - (leg2.CFrame.UpVector * (leg2.Size.Y * 0.6)))
+    end
+
+    local hip1 = parts.hip1
+    if hip1 and hip1:IsA("BasePart") then
+        push_height_point(hip1.Position - (hip1.CFrame.UpVector * (hip1.Size.Y * 0.6)))
+    end
+
+    local hip2 = parts.hip2
+    if hip2 and hip2:IsA("BasePart") then
+        push_height_point(hip2.Position - (hip2.CFrame.UpVector * (hip2.Size.Y * 0.6)))
+    end
+
+    if not minY or not maxY then
+        return nil
+    end
+
+    local height = maxY - minY
+    if height <= 1 then
+        return nil
+    end
+
+    local torsoHalfWidth = math.max(torso.Size.X * 0.8, 0.35)
+    push_width_point(torso.Position + (torsoRight * torsoHalfWidth))
+    push_width_point(torso.Position - (torsoRight * torsoHalfWidth))
+
+    local shoulder1 = parts.shoulder1
+    if shoulder1 and shoulder1:IsA("BasePart") then
+        push_width_point(shoulder1.Position)
+    end
+
+    local shoulder2 = parts.shoulder2
+    if shoulder2 and shoulder2:IsA("BasePart") then
+        push_width_point(shoulder2.Position)
+    end
+
+    if hip1 and hip1:IsA("BasePart") then
+        push_width_point(hip1.Position)
+    end
+    if hip2 and hip2:IsA("BasePart") then
+        push_width_point(hip2.Position)
+    end
+
+    if not minX or not maxX then
+        local fallbackHalfWidth = math.max(height * 0.22, 2)
+        minX = center2d.X - fallbackHalfWidth
+        maxX = center2d.X + fallbackHalfWidth
+    end
+
+    local rawWidth = maxX - minX
+    local minAllowedWidth = math.max(height * 0.2, 2)
+    local maxAllowedWidth = math.max(height * 0.62, 4)
+    local clampedWidth = math.clamp(rawWidth, minAllowedWidth, maxAllowedWidth)
+    local centerX = (minX + maxX) * 0.5
+
+    minX = centerX - (clampedWidth * 0.5)
+    maxX = centerX + (clampedWidth * 0.5)
+
+    local yPadding = math.clamp(height * 0.04, 1, 6)
+    minY = minY - yPadding
+    maxY = maxY + yPadding
 
     return minX, minY, maxX, maxY
 end
@@ -232,6 +392,34 @@ local function get_character_anchor_position(character)
     return nil
 end
 
+local function update_health_candidates()
+    if not players then
+        healthCandidatesCache = {}
+        return
+    end
+
+    local localPlayer = players.LocalPlayer
+    local candidates = {}
+
+    for _, plr in ipairs(players:GetPlayers()) do
+        if plr ~= localPlayer then
+            local char = plr.Character
+            local anchorPos = get_character_anchor_position(char)
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+
+            if anchorPos and hum and hum.MaxHealth > 0 then
+                table.insert(candidates, {
+                    player = plr,
+                    anchor_pos = anchorPos,
+                    humanoid = hum,
+                })
+            end
+        end
+    end
+
+    healthCandidatesCache = candidates
+end
+
 local function get_mapped_humanoid(character, data)
     if not players then
         return nil
@@ -263,14 +451,20 @@ local function get_mapped_humanoid(character, data)
     end
     data.last_health_map_scan = now
 
+    if now - lastHealthCandidatesUpdate > HEALTH_CANDIDATES_UPDATE_INTERVAL then
+        update_health_candidates()
+        lastHealthCandidatesUpdate = now
+    end
+
     local closestDistance = math.huge
     local closestPlayer = nil
     local closestHumanoid = nil
     local localPlayer = players.LocalPlayer
 
-    for _, plr in ipairs(players:GetPlayers()) do
+    for _, candidate in ipairs(healthCandidatesCache) do
+        local plr = candidate.player
         local isTeammate = false
-        if settings.team_check and localPlayer then
+        if settings.team_check and localPlayer and plr then
             if localPlayer.Team and plr.Team then
                 isTeammate = (plr.Team == localPlayer.Team)
             elseif localPlayer.TeamColor and plr.TeamColor then
@@ -278,18 +472,12 @@ local function get_mapped_humanoid(character, data)
             end
         end
 
-        if plr ~= localPlayer and not isTeammate then
-            local char = plr.Character
-            local anchorPos = get_character_anchor_position(char)
-            local hum = char and char:FindFirstChildOfClass("Humanoid")
-
-            if anchorPos and hum and hum.MaxHealth > 0 then
-                local d = (anchorPos - vmTorso.Position).Magnitude
-                if d < closestDistance then
-                    closestDistance = d
-                    closestPlayer = plr
-                    closestHumanoid = hum
-                end
+        if not isTeammate then
+            local d = (candidate.anchor_pos - vmTorso.Position).Magnitude
+            if d < closestDistance then
+                closestDistance = d
+                closestPlayer = plr
+                closestHumanoid = candidate.humanoid
             end
         end
     end
@@ -448,6 +636,10 @@ rawset(player_esp, "set_player_esp", newcclosure(function(character: Model)
         health_value = nil,
         max_health_value = nil,
         last_health_scan = 0,
+        cached_parts = {},
+        last_part_refresh = 0,
+        cached_weapon_name = nil,
+        last_weapon_scan = 0,
         render_connection = nil,
         ancestry_connection = nil,
     }
@@ -528,9 +720,17 @@ rawset(player_esp, "set_player_esp", newcclosure(function(character: Model)
     data.chams.Parent = workspace
 
     data.render_connection = run_service.RenderStepped:Connect(function()
-        camera = cloneref(workspace.CurrentCamera)
+        local liveCamera = workspace.CurrentCamera
+        if liveCamera and camera ~= liveCamera then
+            camera = cloneref(liveCamera)
+        end
 
-        local localTorso = character:FindFirstChild("torso")
+        local parts = refresh_viewmodel_parts(character, data)
+        local localTorso = parts.torso
+        if not localTorso or not localTorso.Parent then
+            parts = refresh_viewmodel_parts(character, data, true)
+            localTorso = parts.torso
+        end
         if not localTorso or not localTorso:IsA("BasePart") or localTorso.Transparency >= 1 then
             hide_esp_objects(data)
             return
@@ -581,7 +781,7 @@ rawset(player_esp, "set_player_esp", newcclosure(function(character: Model)
             pcall(callback, data, point)
         end
 
-        local minX, minY, maxX, maxY = get_bounds_2d(character)
+        local minX, minY, maxX, maxY = get_bounds_2d(character, data)
         if not minX then
             hide_esp_objects(data, false)
             return
@@ -638,7 +838,7 @@ rawset(player_esp, "set_player_esp", newcclosure(function(character: Model)
 
         data.weapon_text.Visible = settings.weapon
         if settings.weapon then
-            local weaponName = find_weapon_name(character)
+            local weaponName = find_weapon_name(character, data)
             if weaponName then
                 data.weapon_text.Color = settings.weapon_color
                 data.weapon_text.Transparency = alpha
@@ -745,8 +945,8 @@ rawset(player_esp, "set_player_esp", newcclosure(function(character: Model)
 
         if settings.skelton then
             for i, pair in ipairs(bone_connections) do
-                local p1 = character:FindFirstChild(pair[1])
-                local p2 = character:FindFirstChild(pair[2])
+                local p1 = parts[pair[1]]
+                local p2 = parts[pair[2]]
                 local line = data.skeleton_lines[i]
 
                 if p1 and p2 and p1:IsA("BasePart") and p2:IsA("BasePart") then
