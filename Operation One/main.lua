@@ -655,3 +655,4 @@ aimbot_groupbox:AddSlider('aimbot_fov_size', {
 
     getgenv().loaded = true;
 
+end
