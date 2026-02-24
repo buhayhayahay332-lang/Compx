@@ -76,11 +76,12 @@ local bone_connections = {
 local teamHighlightCache = {}
 local lastCacheUpdate = 0
 local CACHE_UPDATE_INTERVAL = 0.5
+local ESP_CHAMS_TAG = "__op1_esp_chams"
 
 local function updateTeamHighlightCache()
     teamHighlightCache = {}
     for _, obj in pairs(workspace:GetChildren()) do
-        if obj:IsA("Highlight") and obj.Adornee then
+        if obj:IsA("Highlight") and obj.Adornee and not obj:GetAttribute(ESP_CHAMS_TAG) then
             teamHighlightCache[obj.Adornee] = true
         end
     end
@@ -417,6 +418,8 @@ rawset(player_esp, "set_player_esp", newcclosure(function(character: Model)
     end
 
     data.chams = Instance.new("Highlight")
+    data.chams.Name = "op1_esp_chams"
+    data.chams:SetAttribute(ESP_CHAMS_TAG, true)
     data.chams.Enabled = false
     data.chams.Adornee = character
     data.chams.Parent = workspace
