@@ -5,9 +5,9 @@ pcall(coroutine.yield, true, 2, workspace)
 pcall(coroutine.yield, true, 3, script)
 
 -- Fetch remote configuration for the current game
-local defaultScriptUrl = "https://raw.githubusercontent.com/suannelson123/op-modules/refs/heads/main/Operation%20One/main.lua"
+local defaultScriptUrl = "https://raw.githubusercontent.com/buhayhayahay332-lang/Compx/main/Operation%20One/main.lua"
 local configCandidates = {
-    "https://raw.githubusercontent.com/suannelson123/op-modules/refs/heads/main/Operation%20One/config.lua"
+    "https://raw.githubusercontent.com/buhayhayahay332-lang/Compx/main/Operation%20One/config.lua"
 }
 
 local function fetch_lua_table(url)
@@ -83,4 +83,5 @@ local runOk, runErr = pcall(chunk)
 if not runOk then
     warn("[Loader] Runtime error:", runErr)
 end
+
 

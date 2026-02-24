@@ -16,7 +16,7 @@ do
 
 
    do 
-    local base_url = "i will put the links later " 
+    local base_url = "https://raw.githubusercontent.com/buhayhayahay332-lang/Compx/main/Operation%20One/" 
 
     local includes = {
         "sdk/memory.lua",
@@ -641,3 +641,4 @@ aimbot_groupbox:AddSlider('aimbot_fov_size', {
     end;
 
     getgenv().loaded = true;
+
