@@ -1,12 +1,25 @@
+local ok_http, draw_body = pcall(function()
+    return game:HttpGet("https://raw.githubusercontent.com/mainstreamed/amongus-hook/refs/heads/main/drawingfix.lua", true)
+end)
 
-loadstring(game:HttpGet("https://raw.githubusercontent.com/mainstreamed/amongus-hook/refs/heads/main/drawingfix.lua", true))();
-
-if not (game:IsLoaded() and getgenv().drawingLoaded) then
-    repeat
-        task.wait()
-    until (game:IsLoaded() and getgenv().drawingLoaded)
+local draw_loaded = false
+if ok_http and type(draw_body) == "string" and draw_body ~= "" then
+    local draw_chunk = loadstring(draw_body)
+    if draw_chunk then
+        draw_loaded = pcall(draw_chunk)
+    end
 end
 
+if not draw_loaded then
+    warn("[Main] drawingfix failed, continuing without drawingfix")
+    getgenv().drawingLoaded = true
+end
+
+if not game:IsLoaded() then
+    repeat
+        task.wait()
+    until game:IsLoaded()
+end
 do
     if getgenv().loaded then
         return
