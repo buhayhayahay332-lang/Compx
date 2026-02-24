@@ -638,6 +638,18 @@ aimbot_groupbox:AddSlider('aimbot_fov_size', {
                 esp_player_settings.chams_thermal = value
             end
         })
+
+        player_esp_visual_groupbox:AddSlider('player_esp_chams_max_distance', {
+            Text = 'Chams Max Distance',
+            Default = 1000,
+            Min = 0,
+            Max = 5000,
+            Rounding = 0,
+            Compact = false,
+            Callback = function(value)
+                esp_player_settings.chams_max_distance = value
+            end
+        })
     end
 
     local object_esp_groupbox = esp:AddRightGroupbox("Gadgets") do

@@ -49,6 +49,7 @@ local settings = {
     chams_fill_transparency = 0.5,
     chams_outline_transparency = 0,
     chams_visible_check = false,
+    chams_max_distance = 1000,
     fade_on_distance = false,
     fade_on_death = false,
     fade_on_leave = false,
@@ -435,13 +436,9 @@ rawset(player_esp, "set_player_esp", newcclosure(function(character: Model)
         end
 
         local distance = (camera.CFrame.Position - localTorso.Position).Magnitude / 3.5714285714
-        if settings.max_distance > 0 and distance > settings.max_distance then
-            hide_esp_objects(data)
-            return
-        end
+        local chams_in_distance = (settings.chams_max_distance <= 0) or (distance <= settings.chams_max_distance)
 
-
-        if settings.chams then
+        if settings.chams and chams_in_distance then
             data.chams.Enabled = true
             data.chams.Adornee = character
             data.chams.FillColor = settings.chams_fill_color
@@ -461,6 +458,11 @@ rawset(player_esp, "set_player_esp", newcclosure(function(character: Model)
             data.chams.DepthMode = settings.chams_visible_check and Enum.HighlightDepthMode.Occluded or Enum.HighlightDepthMode.AlwaysOnTop
         else
             data.chams.Enabled = false
+        end
+
+        if settings.max_distance > 0 and distance > settings.max_distance then
+            hide_esp_objects(data, false)
+            return
         end
 
         local point, on = to_view_point(localTorso.Position)
@@ -932,4 +934,7 @@ player_esp.init = function()
 end
 
 return player_esp
+
+
+
 
