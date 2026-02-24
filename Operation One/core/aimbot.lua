@@ -15,6 +15,7 @@ local visibility_params = nil
 local teamHighlightCache = {}
 local lastCacheUpdate = 0
 local CACHE_UPDATE_INTERVAL = 0.5
+local ESP_CHAMS_TAG = "__op1_esp_chams"
 
 local function get_visibility_params()
     if visibility_params then return visibility_params end
@@ -33,7 +34,7 @@ end
 local function updateTeamHighlightCache()
     teamHighlightCache = {}
     for _, obj in pairs(workspace:GetChildren()) do
-        if obj:IsA("Highlight") and obj.Adornee then
+        if obj:IsA("Highlight") and obj.Adornee and obj.Name ~= "op1_esp_chams" and not obj:GetAttribute(ESP_CHAMS_TAG) then
             teamHighlightCache[obj.Adornee] = true
         end
     end

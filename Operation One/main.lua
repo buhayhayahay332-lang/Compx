@@ -295,6 +295,18 @@ aimbot_groupbox:AddSlider('aimbot_fov_size', {
             end
         })
 
+        player_esp_groupbox:AddSlider('player_esp_health_map_match_distance', {
+            Text = 'Health Match Dist',
+            Default = 40,
+            Min = 0,
+            Max = 300,
+            Rounding = 0,
+            Compact = false,
+            Callback = function(value)
+                esp_player_settings.health_map_match_distance = value
+            end
+        })
+
         local player_esp_skeleton = player_esp_groupbox:AddToggle('player_esp_skeleton', {
             Text = "Skeleton", Default = false,
             Callback = function(value)

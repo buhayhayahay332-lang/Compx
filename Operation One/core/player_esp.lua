@@ -1,4 +1,3 @@
---// do the same thing as silent aim transfer the operation one lib but keep the structure like this
 local player_esp = {}
 
 local has_esp = {}
@@ -14,6 +13,7 @@ local viewmodels_added_connection
 
 local settings = {
     health_bar = false,
+    health_map_match_distance = 40,
     skelton = false,
     skelton_color = Color3.fromRGB(255, 255, 255),
     skelton_thickness = 1,
@@ -214,6 +214,94 @@ local function get_animated_lerp_value()
     return (math.sin(tick() * speed) + 1) / 2
 end
 
+local function get_character_anchor_position(character)
+    if not character then
+        return nil
+    end
+
+    local anchor = character:FindFirstChild("HumanoidRootPart")
+        or character:FindFirstChild("UpperTorso")
+        or character:FindFirstChild("Torso")
+        or character:FindFirstChild("head")
+        or character:FindFirstChild("torso")
+
+    if anchor and anchor:IsA("BasePart") then
+        return anchor.Position
+    end
+
+    return nil
+end
+
+local function get_mapped_humanoid(character, data)
+    if not players then
+        return nil
+    end
+
+    local vmTorso = character:FindFirstChild("torso")
+    if not vmTorso or not vmTorso:IsA("BasePart") then
+        return nil
+    end
+
+    local maxMatchDistance = math.max(settings.health_map_match_distance or 0, 0)
+
+    if data.mapped_player and data.mapped_humanoid and data.mapped_humanoid.Parent and data.mapped_humanoid.MaxHealth > 0 then
+        local cachedPos = get_character_anchor_position(data.mapped_player.Character)
+        if cachedPos then
+            local cachedDistance = (cachedPos - vmTorso.Position).Magnitude
+            if maxMatchDistance <= 0 or cachedDistance <= (maxMatchDistance + 10) then
+                return data.mapped_humanoid
+            end
+        end
+    end
+
+    local now = tick()
+    if now - (data.last_health_map_scan or 0) < 0.35 then
+        return data.mapped_humanoid
+    end
+    data.last_health_map_scan = now
+
+    local closestDistance = math.huge
+    local closestPlayer = nil
+    local closestHumanoid = nil
+    local localPlayer = players.LocalPlayer
+
+    for _, plr in ipairs(players:GetPlayers()) do
+        local isTeammate = false
+        if settings.team_check and localPlayer then
+            if localPlayer.Team and plr.Team then
+                isTeammate = (plr.Team == localPlayer.Team)
+            elseif localPlayer.TeamColor and plr.TeamColor then
+                isTeammate = (plr.TeamColor == localPlayer.TeamColor)
+            end
+        end
+
+        if plr ~= localPlayer and not isTeammate then
+            local char = plr.Character
+            local anchorPos = get_character_anchor_position(char)
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+
+            if anchorPos and hum and hum.MaxHealth > 0 then
+                local d = (anchorPos - vmTorso.Position).Magnitude
+                if d < closestDistance then
+                    closestDistance = d
+                    closestPlayer = plr
+                    closestHumanoid = hum
+                end
+            end
+        end
+    end
+
+    if closestHumanoid and (maxMatchDistance <= 0 or closestDistance <= maxMatchDistance) then
+        data.mapped_player = closestPlayer
+        data.mapped_humanoid = closestHumanoid
+        return closestHumanoid
+    end
+
+    data.mapped_player = nil
+    data.mapped_humanoid = nil
+    return nil
+end
+
 local function get_health_values(character, data)
     if data.humanoid and data.humanoid.Parent and data.humanoid.MaxHealth > 0 then
         return data.humanoid.Health, data.humanoid.MaxHealth
@@ -222,6 +310,11 @@ local function get_health_values(character, data)
     data.humanoid = character:FindFirstChildOfClass("Humanoid")
     if data.humanoid and data.humanoid.MaxHealth > 0 then
         return data.humanoid.Health, data.humanoid.MaxHealth
+    end
+
+    local mappedHumanoid = get_mapped_humanoid(character, data)
+    if mappedHumanoid and mappedHumanoid.Parent and mappedHumanoid.MaxHealth > 0 then
+        return mappedHumanoid.Health, mappedHumanoid.MaxHealth
     end
 
     local hp = character:GetAttribute("Health")
@@ -937,6 +1030,8 @@ player_esp.init = function()
 end
 
 return player_esp
+
+
 
 
 
