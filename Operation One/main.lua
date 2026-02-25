@@ -254,7 +254,7 @@ aimbot_groupbox:AddSlider('aimbot_fov_size', {
                     weapon_modifications_settings.instant_ads_speed = (Value / 100);
                 end});
 
-                weapon_modifications_groupbox:AddToggle('weapon_modifications_firerate_bypass', {Text = "Fire Rate Bypass", Default = false, Callback = function(value: boolean)
+                weapon_modifications_groupbox:AddToggle('weapon_modifications_firerate_bypass', {Text = "Fire Rate", Default = false, Callback = function(value: boolean)
                     weapon_modifications_settings.firerate_bypass = value;
                 end});
 
@@ -274,7 +274,7 @@ aimbot_groupbox:AddSlider('aimbot_fov_size', {
                     weapon_modifications_settings.reload_speed = (Value / 100);
                 end});
 
-                weapon_modifications_groupbox:AddSlider('weapon_modifications_firerate_step', {Text = 'Fire Step', Default = 10, Min = 1, Max = 100, Rounding = 0, Compact = false, Callback = function(Value)
+                weapon_modifications_groupbox:AddSlider('weapon_modifications_firerate_step', {Text = 'Firerate Multiplier', Default = 10, Min = 1, Max = 100, Rounding = 0, Compact = false, Callback = function(Value)
                     weapon_modifications_settings.firerate_step = (Value / 1000);
                 end});
 
