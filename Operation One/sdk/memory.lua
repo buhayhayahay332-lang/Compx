@@ -1,4 +1,3 @@
---// USE THIS IF THE OTHER FILE USE THIS IDK WHAT THIS DO TBH SO U I TRUST U FOR NOW ON THIS
 local memory = {};
 local old_meta_methods = {};
 local old_functions = {};
