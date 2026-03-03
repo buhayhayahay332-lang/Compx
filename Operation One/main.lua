@@ -867,7 +867,7 @@ aimbot_groupbox:AddSlider('aimbot_fov_size', {
                 })
             end
 
-            local attachment_editor_groupbox = _local:AddLeftGroupbox("Attachment Editor") do
+            local attachment_editor_groupbox = _local:AddLeftGroupbox("Skin Changer") do
                 add_feature_divider(attachment_editor_groupbox, "Selection")
 
                 attachment_editor_groupbox:AddDropdown('attachment_editor_skin', {Values = {"Default", "BlackCamo", "BlackIce", "Blue", "CandyCane", "CandyCaneCrowbar", "CarbonFiber", "Cardboard", "CheckeredSkin", "ClassicAA12", "CrackedEarth", "DarkRedCamo", "DeepRed", "DesertCamo", "Diamond", "FestiveLightsM4", "ForestCamo", "FrenchSticker", "Ghillie", "GhostShipSkin", "GhostSkin", "GhostStickerSkin", "Golden", "Green", "HalloweenParty", "HazardMP7", "HazardSkin", "HotRedL85", "IceDrone", "Kalash", "Karambit", "MakeshiftBeretta", "MedievalShield", "NeonShapesM249", "OilSpill", "OrnamentBall", "PumpkinBomb", "PurpleFadeC775", "Red", "RustyAUG", "ScytheHammer", "Skulls", "SnowCamo", "Space", "SpiderHookSkin", "SpiderWebSkin", "Splattered", "Steyr", "Tan", "Toxic", "WastelandRSh12", "White", "Yellow"} , Default = 1, Multi = false, Text = 'Skin', Callback = function(Value)
