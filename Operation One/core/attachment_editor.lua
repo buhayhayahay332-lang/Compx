@@ -16,15 +16,30 @@ local settings = {
 };
 
 local get_local_player_gun = function()
-    local gun, local_player_char = nil, viewmodels:FindFirstChild("Viewmodels/" .. local_player.Name);
-    if (not local_player_char) then return end;
-    for i, v: Instance in (local_player_char:GetChildren()) do
+    if (not viewmodels) then return end;
+
+    local item, local_viewmodel = nil, viewmodels:FindFirstChild("LocalViewmodel");
+    if (not local_viewmodel) then return end;
+
+    -- Prefer actual gun models first for attachment compatibility.
+    for i, v: Instance in (local_viewmodel:GetChildren()) do
         if (v:FindFirstChild("Gun")) then
-            gun = {instance = v};
+            item = {instance = v};
             break;
         end;
     end;
-    return gun;
+
+    -- Fallback for shield-only loadouts.
+    if (not item) then
+        for i, v: Instance in (local_viewmodel:GetChildren()) do
+            if (v:FindFirstChild("Shield")) then
+                item = {instance = v};
+                break;
+            end;
+        end;
+    end;
+
+    return item;
 end;
 
 rawset(attachment_editor, "set_skin", newcclosure(function()
