@@ -922,8 +922,8 @@ aimbot_groupbox:AddSlider('aimbot_fov_size', {
             theme_manager:SetLibrary(library);
             save_manager:SetLibrary(library);
             save_manager:IgnoreThemeSettings();
-            theme_manager:SetFolder("KLUB");
-            save_manager:SetFolder("KLUB/Operation One");
+            theme_manager:SetFolder("YE THE GLAZER");
+            save_manager:SetFolder("YE THE GLAZER/Operation One");
             save_manager:BuildConfigSection(ui_settings);
             theme_manager:ApplyToTab(ui_settings);
             save_manager:LoadAutoloadConfig();
