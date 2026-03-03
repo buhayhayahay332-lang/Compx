@@ -24,7 +24,8 @@ do
         "core/player_esp.lua",
         "core/weapon_modifications.lua",
         "core/attachment_editor.lua",
-        "core/pingspoofer.lua"
+        "core/pingspoofer.lua",
+        "core/fullbright.lua"
     }
 
     local inits = {}
@@ -110,10 +111,21 @@ end
         local theme_manager = loadstring(game:HttpGet("https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/addons/ThemeManager.lua"))()
         local save_manager = loadstring(game:HttpGet("https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/addons/SaveManager.lua"))()
         local window = library:CreateWindow({Title = "Ye The Glazer | Pid: " .. game.PlaceVersion, Center = true, AutoShow = true, TabPadding = 8, MenuFadeTime = 0.2});
+
+        local function add_feature_divider(groupbox, label)
+            if not groupbox then return end
+            if type(groupbox.AddLabel) == "function" and type(label) == "string" and label ~= "" then
+                groupbox:AddLabel(label)
+            end
+            if type(groupbox.AddDivider) == "function" then
+                groupbox:AddDivider()
+            end
+        end
         
         local combat = window:AddTab("Combat") do
 
             local aimbot_groupbox = combat:AddLeftGroupbox("Aimbot") do
+                add_feature_divider(aimbot_groupbox, "Core")
                 
                 aimbot_groupbox:AddToggle('aimbot_enable', {
                     Text = "Enable",
@@ -148,6 +160,8 @@ aimbot_groupbox:AddToggle('aimbot_team_check', {
         aimbot_settings.team_check = value
     end
 })
+
+add_feature_divider(aimbot_groupbox, "Targeting")
 
 aimbot_groupbox:AddToggle('aimbot_target_players', {
     Text = "Target Players",
@@ -207,6 +221,8 @@ aimbot_groupbox:AddSlider('aimbot_smoothing', {
     end
 })
 
+add_feature_divider(aimbot_groupbox, "FOV")
+
 local aimbot_fov_enable = aimbot_groupbox:AddToggle('aimbot_fov_enable', {
     Text = "FOV Circle",
     Default = false,
@@ -237,6 +253,7 @@ aimbot_groupbox:AddSlider('aimbot_fov_size', {
 
 
             local weapon_modifications_groupbox = combat:AddRightGroupbox("Weapon Modifications") do
+                add_feature_divider(weapon_modifications_groupbox, "Toggles")
 
                 weapon_modifications_groupbox:AddToggle('weapon_modifications_no_spread', {Text = "No Spread", Default = false, Callback = function(value: boolean)
                     weapon_modifications_settings.no_spread = value;
@@ -261,6 +278,8 @@ aimbot_groupbox:AddSlider('aimbot_fov_size', {
                 weapon_modifications_groupbox:AddToggle('weapon_modifications_force_auto', {Text = "Force Auto", Default = false, Callback = function(value: boolean)
                     weapon_modifications_settings.force_auto = value;
                 end});
+
+                add_feature_divider(weapon_modifications_groupbox, "Sliders")
 
                 weapon_modifications_groupbox:AddSlider('weapon_modifications_recoil_x', {Text = 'Recoil X', Default = 100, Min = 0, Max = 100, Rounding = 0, Compact = false, Callback = function(Value)
                     weapon_modifications_settings.recoil_x = (Value / 100);
@@ -288,6 +307,7 @@ aimbot_groupbox:AddSlider('aimbot_fov_size', {
         local esp = window:AddTab("ESP") do
 
     local player_esp_groupbox = esp:AddLeftGroupbox("Player") do
+        add_feature_divider(player_esp_groupbox, "Info")
         player_esp_groupbox:AddToggle('player_esp_health_bar', {
             Text = "Health Bar", Default = false,
             Callback = function(value)
@@ -401,6 +421,8 @@ aimbot_groupbox:AddSlider('aimbot_fov_size', {
             end
         })
 
+        add_feature_divider(player_esp_groupbox, "Filtering")
+
         player_esp_groupbox:AddToggle('player_esp_team_check', {
             Text = "Team Check", Default = false,
             Tooltip = "Hide ESP for teammates",
@@ -420,6 +442,8 @@ aimbot_groupbox:AddSlider('aimbot_fov_size', {
                 esp_player_settings.max_distance = value
             end
         })
+
+        add_feature_divider(player_esp_groupbox, "Fade")
 
         player_esp_groupbox:AddToggle('player_esp_fade_on_distance', {
             Text = "Fade On Distance", Default = false,
@@ -444,6 +468,7 @@ aimbot_groupbox:AddSlider('aimbot_fov_size', {
     end
 
     local player_esp_visual_groupbox = esp:AddRightGroupbox("Boxes/Chams") do
+        add_feature_divider(player_esp_visual_groupbox, "Boxes")
         local player_esp_box = player_esp_visual_groupbox:AddToggle('player_esp_box', {
             Text = "Box", Default = false,
             Callback = function(value)
@@ -590,6 +615,8 @@ aimbot_groupbox:AddSlider('aimbot_fov_size', {
             end
         })
 
+        add_feature_divider(player_esp_visual_groupbox, "Chams")
+
         local player_esp_chams = player_esp_visual_groupbox:AddToggle('player_esp_chams', {
             Text = "Chams", Default = false,
             Callback = function(value)
@@ -665,6 +692,7 @@ aimbot_groupbox:AddSlider('aimbot_fov_size', {
     end
 
     local object_esp_groupbox = esp:AddRightGroupbox("Gadgets") do
+        add_feature_divider(object_esp_groupbox, "Tracked Objects")
         local claymore_toggle = object_esp_groupbox:AddToggle('object_esp_claymore', {
             Text = "Claymores", Default = false,
             Callback = function(value)
@@ -694,6 +722,8 @@ aimbot_groupbox:AddSlider('aimbot_fov_size', {
                 esp_player_settings.drone_color = value
             end
         })
+
+        add_feature_divider(object_esp_groupbox, "Actions")
 
         object_esp_groupbox:AddButton({
             Text = 'Refresh ESP',
@@ -726,6 +756,7 @@ aimbot_groupbox:AddSlider('aimbot_fov_size', {
         local _local = window:AddTab("Local") do
 
             local ping_spoofer_groupbox = _local:AddRightGroupbox("Ping Spoofer") do
+                add_feature_divider(ping_spoofer_groupbox, "Mode")
                 ping_spoofer_groupbox:AddDropdown('pingspoofer_mode', {
                     Values = {"Off", "50 ms", "100 ms", "200 ms", "500 ms", "999 ms", "Infinite", "NaN"},
                     Default = 1,
@@ -748,13 +779,108 @@ aimbot_groupbox:AddSlider('aimbot_fov_size', {
                 })
             end
 
-            local attachment_editor_groupbox = _local:AddLeftGroupbox("Attachment Editor") do
+            local fullbright_groupbox = _local:AddRightGroupbox("Fullbright") do
+                add_feature_divider(fullbright_groupbox, "Lighting")
+                local fullbright_enable = fullbright_groupbox:AddToggle('fullbright_enable', {
+                    Text = "Enable",
+                    Default = false,
+                    Callback = function(value)
+                        if type(fullbright_settings) == "table" then
+                            fullbright_settings.enabled = value
+                        end
+                        if type(set_fullbright) == "function" then
+                            set_fullbright(value)
+                        end
+                    end
+                })
 
-                attachment_editor_groupbox:AddDropdown('attachment_editor_skin', {Values = {"Default", "Golden", "Diamond", "Red", "Green", "Blue", "Halloween", "Yellow", "White", "SnowCamo", "Kalash", "Skulls", "OilSpill", "HazardSkin", "ForestCamo", "ClassicStuds", "DeepRed", "FrenchSticker", "Steyr", "DesertCamo", "Ghillie", "CarbonFiber", "Space"} , Default = 1, Multi = false, Text = 'Skin', Callback = function(Value)
+                fullbright_enable:AddColorPicker('fullbright_ambient', {
+                    Default = Color3.fromRGB(178, 178, 178),
+                    Title = "Ambient",
+                    Callback = function(value)
+                        if type(fullbright_settings) ~= "table" then return end
+                        fullbright_settings.ambient = value
+                        if type(refresh_fullbright) == "function" then
+                            refresh_fullbright()
+                        end
+                    end
+                })
+
+                fullbright_groupbox:AddSlider('fullbright_brightness', {
+                    Text = 'Brightness',
+                    Default = 100,
+                    Min = 0,
+                    Max = 500,
+                    Rounding = 0,
+                    Compact = false,
+                    Callback = function(value)
+                        if type(fullbright_settings) ~= "table" then return end
+                        fullbright_settings.brightness = (value / 100)
+                        if type(refresh_fullbright) == "function" then
+                            refresh_fullbright()
+                        end
+                    end
+                })
+
+                fullbright_groupbox:AddSlider('fullbright_clock_time', {
+                    Text = 'Clock Time',
+                    Default = 120,
+                    Min = 0,
+                    Max = 240,
+                    Rounding = 0,
+                    Compact = false,
+                    Callback = function(value)
+                        if type(fullbright_settings) ~= "table" then return end
+                        fullbright_settings.clock_time = (value / 10)
+                        if type(refresh_fullbright) == "function" then
+                            refresh_fullbright()
+                        end
+                    end
+                })
+
+                fullbright_groupbox:AddSlider('fullbright_fog_end', {
+                    Text = 'Fog End',
+                    Default = 786543,
+                    Min = 1000,
+                    Max = 1000000,
+                    Rounding = 0,
+                    Compact = false,
+                    Callback = function(value)
+                        if type(fullbright_settings) ~= "table" then return end
+                        fullbright_settings.fog_end = value
+                        if type(refresh_fullbright) == "function" then
+                            refresh_fullbright()
+                        end
+                    end
+                })
+
+                fullbright_groupbox:AddToggle('fullbright_global_shadows', {
+                    Text = "Global Shadows",
+                    Default = false,
+                    Callback = function(value)
+                        if type(fullbright_settings) ~= "table" then return end
+                        fullbright_settings.global_shadows = value
+                        if type(refresh_fullbright) == "function" then
+                            refresh_fullbright()
+                        end
+                    end
+                })
+            end
+
+            local attachment_editor_groupbox = _local:AddLeftGroupbox("Attachment Editor") do
+                add_feature_divider(attachment_editor_groupbox, "Selection")
+
+                attachment_editor_groupbox:AddDropdown('attachment_editor_skin', {Values = {"Default", "BlackCamo", "BlackIce", "Blue", "CandyCane", "CandyCaneCrowbar", "CarbonFiber", "Cardboard", "CheckeredSkin", "ClassicAA12", "CrackedEarth", "DarkRedCamo", "DeepRed", "DesertCamo", "Diamond", "FestiveLightsM4", "ForestCamo", "FrenchSticker", "Ghillie", "GhostShipSkin", "GhostSkin", "GhostStickerSkin", "Golden", "Green", "HalloweenParty", "HazardMP7", "HazardSkin", "HotRedL85", "IceDrone", "Kalash", "Karambit", "MakeshiftBeretta", "MedievalShield", "NeonShapesM249", "OilSpill", "OrnamentBall", "PumpkinBomb", "PurpleFadeC775", "Red", "RustyAUG", "ScytheHammer", "Skulls", "SnowCamo", "Space", "SpiderHookSkin", "SpiderWebSkin", "Splattered", "Steyr", "Tan", "Toxic", "WastelandRSh12", "White", "Yellow"} , Default = 1, Multi = false, Text = 'Skin', Callback = function(Value)
                     attachment_editor_settings.skin = Value;
                 end});
---[[
-                attachment_editor_groupbox:AddDropdown('attachment_editor_scope', {Values = {"Default", "PSO", "PMII", "ACOG", "Specter", "TA44", "Kobra", "Micro", "XPS", "DeltaPoint", "Primer"} , Default = 1, Multi = false, Text = 'Scope', Callback = function(Value)
+
+                attachment_editor_groupbox:AddDropdown('attachment_editor_charm', {Values = {"Default", "8BallCharm", "AceCard", "BananaCharm", "BellCharm", "BlueBall", "BulletCharm", "ChristmasTreeCharm", "ColorfulSquares", "DiamondCharm", "DogTagCharm", "EyeballCharm", "GhostCharm", "LoveHeart", "LuckyCharm", "PumpkinCharm", "S1Bronze", "S1Champion", "S1Diamond", "S1Gold", "S1Platinum", "S1Silver", "S2Bronze", "S2Champion", "S2Diamond", "S2Gold", "S2Platinum", "S2Silver", "SnowGlobeCharm", "SnowflakeCharm", "TargetPracticeCharm"} , Default = 1, Multi = false, Text = 'Charm', Callback = function(Value)
+                    attachment_editor_settings.charm = Value;
+                end});
+                
+                
+                --[[
+                    attachment_editor_groupbox:AddDropdown('attachment_editor_scope', {Values = {"Default", "PSO", "PMII", "ACOG", "Specter", "TA44", "Kobra", "Micro", "XPS", "DeltaPoint", "Primer"} , Default = 1, Multi = false, Text = 'Scope', Callback = function(Value)
                     attachment_editor_settings.scope = Value;
                 end});
 
@@ -762,9 +888,6 @@ aimbot_groupbox:AddSlider('aimbot_fov_size', {
                     attachment_editor_settings.barrel = Value;
                 end});
 
-                attachment_editor_groupbox:AddDropdown('attachment_editor_charm', {Values = {"Default", "AceCard", "BlueBall", "BulletCharm", "ColorfulSquares", "DiamondCharm", "LoveHeart", "LuckyCharm"} , Default = 1, Multi = false, Text = 'Charm', Callback = function(Value)
-                    attachment_editor_settings.charm = Value;
-                end});
 
                 attachment_editor_groupbox:AddDropdown('attachment_editor_mag', {Values = {"Default", "DrumAA12", "DrumSkorpion", "ExtendedMP7", "ExtendedSkorpion"} , Default = 1, Multi = false, Text = 'Mag', Callback = function(Value)
                     attachment_editor_settings.mag = Value;
@@ -779,13 +902,15 @@ aimbot_groupbox:AddSlider('aimbot_fov_size', {
                 end});
 
 ]]
+                add_feature_divider(attachment_editor_groupbox, "Apply")
+
                 attachment_editor_groupbox:AddButton({Text = 'Apply', DoubleClick = false, Func = function()
                     set_skin();
+                    set_charm();
                     --set_scope();
                     --set_grip();
                     --set_stock();
                     --set_mag();
-                    --set_charm();
                     --set_barrel();
                 end});
             end;
