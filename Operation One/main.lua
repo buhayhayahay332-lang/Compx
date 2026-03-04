@@ -754,8 +754,7 @@ aimbot_groupbox:AddSlider('aimbot_fov_size', {
 
 
         local _local = window:AddTab("Local") do
-
-            local ping_spoofer_groupbox = _local:AddRightGroupbox("Ping Spoofer") do
+            local ping_spoofer_groupbox = _local:AddRightGroupbox("Ping Spoofer(c:Voltra/Yeno)") do
                 add_feature_divider(ping_spoofer_groupbox, "Mode")
                 ping_spoofer_groupbox:AddDropdown('pingspoofer_mode', {
                     Values = {"Off", "50 ms", "100 ms", "200 ms", "500 ms", "999 ms", "Infinite", "NaN"},
@@ -766,13 +765,14 @@ aimbot_groupbox:AddSlider('aimbot_fov_size', {
                     Callback = function(Value)
                         local modeMap = {
                             ["Off"] = "off",
+                            ["10 ms"] = 0.01,
                             ["50 ms"] = 0.05,
                             ["100 ms"] = 0.1,
                             ["200 ms"] = 0.2,
                             ["500 ms"] = 0.5,
                             ["999 ms"] = 0.999,
                             ["Infinite"] = "inf",
-                            ["NaN"] = "nan"
+                            ["NaN"] = "nan" --means 0 
                         }
                         pingspoofer_settings.mode = modeMap[Value] or "off"
                     end
