@@ -21,7 +21,6 @@ local get_local_player_gun = function()
     local item, local_viewmodel = nil, viewmodels:FindFirstChild("LocalViewmodel");
     if (not local_viewmodel) then return end;
 
-    -- Prefer actual gun models first for attachment compatibility.
     for i, v: Instance in (local_viewmodel:GetChildren()) do
         if (v:FindFirstChild("Gun")) then
             item = {instance = v};
@@ -29,7 +28,6 @@ local get_local_player_gun = function()
         end;
     end;
 
-    -- Fallback for shield-only loadouts.
     if (not item) then
         for i, v: Instance in (local_viewmodel:GetChildren()) do
             if (v:FindFirstChild("Shield")) then
