@@ -1,3 +1,5 @@
+--// credits to voltra, im not gonna make this anyway but since he found it might put it as a feature as well
+--// just made some tweak so it works properly
 local pingspoofer = {}
 local settings = {
     mode = "off"  -- "off" | number (seconds, e.g. 0.05 = 50ms) | "inf" | "nan"
