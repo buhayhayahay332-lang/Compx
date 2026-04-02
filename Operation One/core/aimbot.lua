@@ -316,7 +316,7 @@ aimbot.init = function()
                 end
                 local origin = debug.getstack(stack_level, 3)
                 if origin and origin.Position then
-                    debug.setstack(stack_level, 6, CFrame.lookAt(origin.Position, part.Position))
+                    debug.setstack(stack_level, 5, CFrame.lookAt(origin.Position, part.Position))
                     if settings.debug then
                         print("[Aimbot] redirected ->", part:GetFullName())
                     end
