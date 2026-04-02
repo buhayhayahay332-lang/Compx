@@ -308,25 +308,6 @@ aimbot_groupbox:AddSlider('aimbot_fov_size', {
 
     local player_esp_groupbox = esp:AddLeftGroupbox("Player") do
         add_feature_divider(player_esp_groupbox, "Info")
-        player_esp_groupbox:AddToggle('player_esp_health_bar', {
-            Text = "Health Bar", Default = false,
-            Callback = function(value)
-                esp_player_settings.health_bar = value
-            end
-        })
-
-        player_esp_groupbox:AddSlider('player_esp_health_map_match_distance', {
-            Text = 'Health Match Dist',
-            Default = 40,
-            Min = 0,
-            Max = 300,
-            Rounding = 0,
-            Compact = false,
-            Callback = function(value)
-                esp_player_settings.health_map_match_distance = value
-            end
-        })
-
         local player_esp_skeleton = player_esp_groupbox:AddToggle('player_esp_skeleton', {
             Text = "Skeleton", Default = false,
             Callback = function(value)
@@ -354,21 +335,6 @@ aimbot_groupbox:AddSlider('aimbot_fov_size', {
             end
         })
 
-        local player_esp_names = player_esp_groupbox:AddToggle('player_esp_names', {
-            Text = "Name", Default = false,
-            Callback = function(value)
-                esp_player_settings.names = value
-            end
-        })
-
-        player_esp_names:AddColorPicker('player_esp_name_color', {
-            Default = Color3.fromRGB(255, 255, 255),
-            Title = "Name Color",
-            Callback = function(value)
-                esp_player_settings.name_color = value
-            end
-        })
-
         player_esp_groupbox:AddSlider('player_esp_font_size', {
             Text = 'Font Size',
             Default = 13,
@@ -393,16 +359,6 @@ aimbot_groupbox:AddSlider('aimbot_fov_size', {
             Title = "Distance Color",
             Callback = function(value)
                 esp_player_settings.distance_color = value
-            end
-        })
-
-        player_esp_groupbox:AddDropdown('player_esp_distance_position', {
-            Values = {"Text", "Name"},
-            Default = 1,
-            Multi = false,
-            Text = 'Distance Mode',
-            Callback = function(value)
-                esp_player_settings.distance_position = value
             end
         })
 
@@ -440,29 +396,6 @@ aimbot_groupbox:AddSlider('aimbot_fov_size', {
             Compact = false,
             Callback = function(value)
                 esp_player_settings.max_distance = value
-            end
-        })
-
-        add_feature_divider(player_esp_groupbox, "Fade")
-
-        player_esp_groupbox:AddToggle('player_esp_fade_on_distance', {
-            Text = "Fade On Distance", Default = false,
-            Callback = function(value)
-                esp_player_settings.fade_on_distance = value
-            end
-        })
-
-        player_esp_groupbox:AddToggle('player_esp_fade_on_death', {
-            Text = "Fade On Death", Default = false,
-            Callback = function(value)
-                esp_player_settings.fade_on_death = value
-            end
-        })
-
-        player_esp_groupbox:AddToggle('player_esp_fade_on_leave', {
-            Text = "Fade On Leave", Default = false,
-            Callback = function(value)
-                esp_player_settings.fade_on_leave = value
             end
         })
     end
@@ -593,25 +526,6 @@ aimbot_groupbox:AddSlider('aimbot_fov_size', {
             Compact = false,
             Callback = function(value)
                 esp_player_settings.box_corner_length = value
-            end
-        })
-
-        player_esp_visual_groupbox:AddToggle('player_esp_box_animate', {
-            Text = "Animate Gradient", Default = false,
-            Callback = function(value)
-                esp_player_settings.box_animate = value
-            end
-        })
-
-        player_esp_visual_groupbox:AddSlider('player_esp_box_rotation_speed', {
-            Text = 'Rotate Speed',
-            Default = 300,
-            Min = 1,
-            Max = 1000,
-            Rounding = 0,
-            Compact = false,
-            Callback = function(value)
-                esp_player_settings.box_rotation_speed = value
             end
         })
 
@@ -927,7 +841,6 @@ aimbot_groupbox:AddSlider('aimbot_fov_size', {
             save_manager:BuildConfigSection(ui_settings);
             theme_manager:ApplyToTab(ui_settings);
             save_manager:LoadAutoloadConfig();
-            --replicated_storage:FindFirstChild("RemoteEvent"):FireServer('z', 5); --// anti admin
         end;
     end;
 

@@ -15,17 +15,12 @@ local player_render_connection
 local tracked_viewmodels = {}
 
 local settings = {
-    health_bar = false,
-    health_map_match_distance = 40,
-    skelton = false,
+    skelton = false, 
     skelton_color = Color3.fromRGB(255, 255, 255),
     skelton_thickness = 1,
-    names = false,
-    name_color = Color3.fromRGB(255, 255, 255),
     font_size = 13,
     distance = false,
-    distance_color = Color3.fromRGB(255, 255, 255),
-    distance_position = "Text",
+    distance_color = Color3.fromRGB(255, 255, 255), 
     weapon = false,
     weapon_color = Color3.fromRGB(255, 255, 255),
     box = false,
@@ -37,8 +32,6 @@ local settings = {
     box_corner_color = Color3.fromRGB(255, 255, 255),
     box_corner_thickness = 1,
     box_corner_length = 14,
-    box_animate = false,
-    box_rotation_speed = 300,
     box_gradient = false,
     box_gradient_color_1 = Color3.fromRGB(243, 116, 116),
     box_gradient_color_2 = Color3.fromRGB(0, 0, 0),
@@ -53,9 +46,6 @@ local settings = {
     chams_outline_transparency = 0,
     chams_visible_check = false,
     chams_max_distance = 1000,
-    fade_on_distance = false,
-    fade_on_death = false,
-    fade_on_leave = false,
     show_claymores = false,
     show_drones = false,
     claymore_color = Color3.fromRGB(255, 0, 0),
@@ -80,16 +70,9 @@ local teamHighlightCache = {}
 local lastCacheUpdate = 0
 local CACHE_UPDATE_INTERVAL = 0.5
 local ESP_CHAMS_TAG = "__op1_esp_chams"
-local healthCandidatesCache = {}
-local lastHealthCandidatesUpdate = 0
-local HEALTH_CANDIDATES_UPDATE_INTERVAL = 0.2
 local PART_REFRESH_INTERVAL = 0.3
 local WEAPON_SCAN_INTERVAL = 0.2
 local OVERLAY_UPDATE_INTERVAL = 0.08
-local HEALTH_VALUE_UPDATE_INTERVAL = 0.12
-local HEALTH_DESC_SCAN_MIN_INTERVAL = 1
-local HEALTH_DESC_SCAN_MAX_INTERVAL = 6
-local HEALTH_DESC_SCAN_GROWTH = 1.75
 local OBJECT_ESP_UPDATE_INTERVAL = 0.05
 local TRACKED_VIEWMODEL_PARTS = {
     "head",
@@ -187,14 +170,6 @@ local function set_visible(drawings, visible)
     for _, d in ipairs(drawings) do
         if d then
             d.Visible = visible
-        end
-    end
-end
-
-local function set_transparency(drawings, alpha)
-    for _, d in ipairs(drawings) do
-        if d then
-            d.Transparency = alpha
         end
     end
 end
@@ -397,222 +372,6 @@ local function get_bounds_2d(character, data)
     return minX, minY, maxX, maxY
 end
 
-local function get_distance_alpha(distance)
-    if not settings.fade_on_distance or settings.max_distance <= 0 then
-        return 1
-    end
-    return math.clamp(1 - (distance / settings.max_distance), 0.1, 1)
-end
-
-local function get_animated_lerp_value()
-    if not settings.box_animate then
-        return 0
-    end
-    local speed = math.max(settings.box_rotation_speed, 1) / 60
-    return (math.sin(tick() * speed) + 1) / 2
-end
-
-local function get_character_anchor_position(character)
-    if not character then
-        return nil
-    end
-
-    local anchor = character:FindFirstChild("HumanoidRootPart")
-        or character:FindFirstChild("UpperTorso")
-        or character:FindFirstChild("Torso")
-        or character:FindFirstChild("head")
-        or character:FindFirstChild("torso")
-
-    if anchor and anchor:IsA("BasePart") then
-        return anchor.Position
-    end
-
-    return nil
-end
-
-local function update_health_candidates()
-    if not players then
-        healthCandidatesCache = {}
-        return
-    end
-
-    local localPlayer = players.LocalPlayer
-    local candidates = {}
-
-    for _, plr in ipairs(players:GetPlayers()) do
-        if plr ~= localPlayer then
-            local char = plr.Character
-            local anchorPos = get_character_anchor_position(char)
-            local hum = char and char:FindFirstChildOfClass("Humanoid")
-
-            if anchorPos and hum and hum.MaxHealth > 0 then
-                table.insert(candidates, {
-                    player = plr,
-                    anchor_pos = anchorPos,
-                    humanoid = hum,
-                })
-            end
-        end
-    end
-
-    healthCandidatesCache = candidates
-end
-
-local function get_mapped_humanoid(character, data)
-    if not players then
-        return nil
-    end
-
-    local vmTorso = character:FindFirstChild("torso")
-    if not vmTorso or not vmTorso:IsA("BasePart") then
-        return nil
-    end
-
-    local maxMatchDistance = math.max(settings.health_map_match_distance or 0, 0)
-
-    if data.mapped_player and data.mapped_humanoid and data.mapped_humanoid.Parent and data.mapped_humanoid.MaxHealth > 0 then
-        local cachedPos = get_character_anchor_position(data.mapped_player.Character)
-        if cachedPos then
-            local cachedDistance = (cachedPos - vmTorso.Position).Magnitude
-            if maxMatchDistance <= 0 or cachedDistance <= (maxMatchDistance + 10) then
-                return data.mapped_humanoid
-            end
-        end
-    end
-
-    local now = tick()
-    if now - (data.last_health_map_scan or 0) < 0.35 then
-        if data.mapped_humanoid and data.mapped_humanoid.Parent and data.mapped_humanoid.MaxHealth > 0 then
-            return data.mapped_humanoid
-        end
-        return nil
-    end
-    data.last_health_map_scan = now
-
-    if now - lastHealthCandidatesUpdate > HEALTH_CANDIDATES_UPDATE_INTERVAL then
-        update_health_candidates()
-        lastHealthCandidatesUpdate = now
-    end
-
-    local closestDistance = math.huge
-    local closestPlayer = nil
-    local closestHumanoid = nil
-    local localPlayer = players.LocalPlayer
-
-    for _, candidate in ipairs(healthCandidatesCache) do
-        local plr = candidate.player
-        local isTeammate = false
-        if settings.team_check and localPlayer and plr then
-            if localPlayer.Team and plr.Team then
-                isTeammate = (plr.Team == localPlayer.Team)
-            elseif localPlayer.TeamColor and plr.TeamColor then
-                isTeammate = (plr.TeamColor == localPlayer.TeamColor)
-            end
-        end
-
-        if not isTeammate then
-            local d = (candidate.anchor_pos - vmTorso.Position).Magnitude
-            if d < closestDistance then
-                closestDistance = d
-                closestPlayer = plr
-                closestHumanoid = candidate.humanoid
-            end
-        end
-    end
-
-    if closestHumanoid and (maxMatchDistance <= 0 or closestDistance <= maxMatchDistance) then
-        data.mapped_player = closestPlayer
-        data.mapped_humanoid = closestHumanoid
-        data.last_health_map_valid = now
-        return closestHumanoid
-    end
-
-    if data.mapped_humanoid and data.mapped_humanoid.Parent and data.mapped_humanoid.MaxHealth > 0 then
-        if now - (data.last_health_map_valid or 0) <= 1.0 then
-            return data.mapped_humanoid
-        end
-    end
-
-    data.mapped_player = nil
-    data.mapped_humanoid = nil
-    return nil
-end
-
-local function get_health_values(character, data)
-    if data.humanoid and data.humanoid.Parent and data.humanoid.MaxHealth > 0 then
-        data.health_scan_interval = HEALTH_DESC_SCAN_MIN_INTERVAL
-        return data.humanoid.Health, data.humanoid.MaxHealth
-    end
-
-    data.humanoid = character:FindFirstChildOfClass("Humanoid")
-    if data.humanoid and data.humanoid.MaxHealth > 0 then
-        data.health_scan_interval = HEALTH_DESC_SCAN_MIN_INTERVAL
-        return data.humanoid.Health, data.humanoid.MaxHealth
-    end
-
-    local mappedHumanoid = get_mapped_humanoid(character, data)
-    if mappedHumanoid and mappedHumanoid.Parent and mappedHumanoid.MaxHealth > 0 then
-        data.health_scan_interval = HEALTH_DESC_SCAN_MIN_INTERVAL
-        return mappedHumanoid.Health, mappedHumanoid.MaxHealth
-    end
-
-    local hp = character:GetAttribute("Health")
-        or character:GetAttribute("health")
-        or character:GetAttribute("HP")
-        or character:GetAttribute("hp")
-    local max_hp = character:GetAttribute("MaxHealth")
-        or character:GetAttribute("maxHealth")
-        or character:GetAttribute("max_health")
-        or character:GetAttribute("maxhp")
-        or character:GetAttribute("MaxHP")
-
-    if type(hp) == "number" and type(max_hp) == "number" and max_hp > 0 then
-        data.health_scan_interval = HEALTH_DESC_SCAN_MIN_INTERVAL
-        return hp, max_hp
-    end
-
-    if (not data.health_value or not data.health_value.Parent or not data.max_health_value or not data.max_health_value.Parent) then
-        local now = tick()
-        local scanInterval = data.health_scan_interval or HEALTH_DESC_SCAN_MIN_INTERVAL
-        if now - (data.last_health_scan or 0) > scanInterval then
-            data.last_health_scan = now
-            data.health_value = nil
-            data.max_health_value = nil
-            local foundHealth = false
-            local foundMaxHealth = false
-
-            for _, obj in ipairs(character:GetDescendants()) do
-                if obj:IsA("NumberValue") then
-                    local n = string.lower(obj.Name)
-                    if (n == "health" or n == "hp") and not data.health_value then
-                        data.health_value = obj
-                        foundHealth = true
-                    elseif (n == "maxhealth" or n == "max_hp" or n == "maxhp") and not data.max_health_value then
-                        data.max_health_value = obj
-                        foundMaxHealth = true
-                    end
-                end
-                if data.health_value and data.max_health_value then
-                    break
-                end
-            end
-
-            if foundHealth and foundMaxHealth then
-                data.health_scan_interval = HEALTH_DESC_SCAN_MIN_INTERVAL
-            else
-                data.health_scan_interval = math.min(scanInterval * HEALTH_DESC_SCAN_GROWTH, HEALTH_DESC_SCAN_MAX_INTERVAL)
-            end
-        end
-    end
-
-    if data.health_value and data.max_health_value and data.max_health_value.Value > 0 then
-        data.health_scan_interval = HEALTH_DESC_SCAN_MIN_INTERVAL
-        return data.health_value.Value, data.max_health_value.Value
-    end
-
-    return nil, nil
-end
-
 local function hide_esp_objects(data, hide_chams)
     if not data then
         return
@@ -625,9 +384,6 @@ local function hide_esp_objects(data, hide_chams)
     set_visible(data.corner_lines, false)
     set_visible(data.skeleton_lines, false)
 
-    data.health_bar_outer.Visible = false
-    data.health_bar_inner.Visible = false
-    data.name_text.Visible = false
     data.distance_text.Visible = false
     data.weapon_text.Visible = false
     data.box_outline.Visible = false
@@ -648,9 +404,6 @@ local function cleanup_esp_entry(character, data)
         data.ancestry_connection = nil
     end
 
-    remove_drawing(data.health_bar_inner)
-    remove_drawing(data.health_bar_outer)
-    remove_drawing(data.name_text)
     remove_drawing(data.distance_text)
     remove_drawing(data.weapon_text)
     remove_drawing(data.box_outline)
@@ -721,13 +474,11 @@ local function update_player_esp_entry(character, data)
     end
 
     local need_screen_pipeline = (
-        settings.names
-        or settings.distance
+        settings.distance
         or settings.weapon
         or settings.box
         or settings.box_filled
         or settings.box_corner
-        or settings.health_bar
         or settings.skelton
         or next(esp_ran) ~= nil
     )
@@ -759,8 +510,8 @@ local function update_player_esp_entry(character, data)
         return
     end
 
-    local alpha = get_distance_alpha(distance)
-    local gradientLerp = get_animated_lerp_value()
+    local alpha = 1
+    local gradientLerp = 0
     local boxColor = settings.box_color
     local fillColor = settings.box_fill_color
     local now = tick()
@@ -777,28 +528,8 @@ local function update_player_esp_entry(character, data)
         fillColor = settings.box_gradient_fill_color_1:Lerp(settings.box_gradient_fill_color_2, gradientLerp)
     end
 
-    local nameText = character.Name
-    local showDistanceAsText = true
-    if type(settings.distance_position) == "string" then
-        local mode = string.lower(settings.distance_position)
-        showDistanceAsText = mode ~= "name"
-    end
-
-    if settings.distance and not showDistanceAsText then
-        nameText = string.format("%s [%d]", nameText, math.floor(distance))
-    end
-
-    set_prop(data.name_text, "Visible", settings.names)
-    if settings.names and refreshOverlay then
-        set_prop(data.name_text, "Color", settings.name_color)
-        set_prop(data.name_text, "Transparency", alpha)
-        set_prop(data.name_text, "Size", settings.font_size)
-        set_prop(data.name_text, "Text", nameText)
-        set_prop(data.name_text, "Position", Vector2.new(minX + (width / 2), minY - 14))
-    end
-
-    set_prop(data.distance_text, "Visible", settings.distance and showDistanceAsText)
-    if settings.distance and showDistanceAsText and refreshOverlay then
+    set_prop(data.distance_text, "Visible", settings.distance)
+    if settings.distance and refreshOverlay then
         set_prop(data.distance_text, "Color", settings.distance_color)
         set_prop(data.distance_text, "Transparency", alpha)
         set_prop(data.distance_text, "Size", settings.font_size)
@@ -880,53 +611,6 @@ local function update_player_esp_entry(character, data)
         set_visible(data.corner_lines, false)
     end
 
-    if settings.health_bar then
-        local refreshHealthValues = (now - (data.last_health_value_update or 0)) >= HEALTH_VALUE_UPDATE_INTERVAL
-        if refreshHealthValues then
-            data.last_health_value_update = now
-            local hp, max_hp = get_health_values(character, data)
-            if hp and max_hp and max_hp > 0 then
-                data.cached_health = hp
-                data.cached_max_health = max_hp
-            else
-                data.cached_health = nil
-                data.cached_max_health = nil
-            end
-        end
-
-        local hp = data.cached_health
-        local max_hp = data.cached_max_health
-        if hp and max_hp and max_hp > 0 then
-            local hpRatio = math.clamp(hp / max_hp, 0, 1)
-            if settings.fade_on_death and hpRatio <= 0 then
-                set_prop(data.health_bar_outer, "Visible", false)
-                set_prop(data.health_bar_inner, "Visible", false)
-            else
-                local barWidth = 3
-                local barHeight = height
-                local barX = minX - 6
-                local barY = minY
-
-                set_prop(data.health_bar_outer, "Visible", true)
-                set_prop(data.health_bar_outer, "Transparency", alpha)
-                set_prop(data.health_bar_outer, "Size", Vector2.new(barWidth, barHeight))
-                set_prop(data.health_bar_outer, "Position", Vector2.new(barX, barY))
-
-                set_prop(data.health_bar_inner, "Visible", true)
-                set_prop(data.health_bar_inner, "Transparency", alpha)
-                set_prop(data.health_bar_inner, "Color", Color3.new(1, 0, 0):Lerp(Color3.new(0, 1, 0), hpRatio))
-                set_prop(data.health_bar_inner, "Size", Vector2.new(barWidth - 1, (barHeight - 2) * hpRatio))
-                set_prop(data.health_bar_inner, "Position", Vector2.new(barX + 0.5, barY + (barHeight - 1) - ((barHeight - 2) * hpRatio)))
-            end
-        else
-            set_prop(data.health_bar_outer, "Visible", false)
-            set_prop(data.health_bar_inner, "Visible", false)
-        end
-    else
-        set_prop(data.health_bar_outer, "Visible", false)
-        set_prop(data.health_bar_inner, "Visible", false)
-    end
-
     if settings.skelton then
         for i, pair in ipairs(bone_connections) do
             local p1 = parts[pair[1]]
@@ -994,13 +678,6 @@ rawset(player_esp, "set_player_esp", newcclosure(function(character: Model)
     local data = {
         self = character,
         humanoid = character:FindFirstChildOfClass("Humanoid"),
-        health_value = nil,
-        max_health_value = nil,
-        cached_health = nil,
-        cached_max_health = nil,
-        last_health_value_update = 0,
-        last_health_scan = 0,
-        health_scan_interval = HEALTH_DESC_SCAN_MIN_INTERVAL,
         cached_parts = {},
         last_part_refresh = 0,
         cached_weapon_name = nil,
@@ -1008,28 +685,6 @@ rawset(player_esp, "set_player_esp", newcclosure(function(character: Model)
         last_overlay_update = 0,
         ancestry_connection = nil,
     }
-
-    data.health_bar_inner = Drawing.new("Square")
-    data.health_bar_inner.Visible = false
-    data.health_bar_inner.Thickness = 0
-    data.health_bar_inner.Filled = true
-    data.health_bar_inner.ZIndex = 6
-
-    data.health_bar_outer = Drawing.new("Square")
-    data.health_bar_outer.Visible = false
-    data.health_bar_outer.Color = Color3.new(0.152941, 0.152941, 0.152941)
-    data.health_bar_outer.Transparency = 0.7
-    data.health_bar_outer.Thickness = 0
-    data.health_bar_outer.Filled = true
-    data.health_bar_outer.ZIndex = 5
-
-    data.name_text = Drawing.new("Text")
-    data.name_text.Visible = false
-    data.name_text.Center = true
-    data.name_text.Outline = true
-    data.name_text.Size = settings.font_size
-    data.name_text.Font = 2
-    data.name_text.ZIndex = 7
 
     data.distance_text = Drawing.new("Text")
     data.distance_text.Visible = false
@@ -1087,20 +742,6 @@ rawset(player_esp, "set_player_esp", newcclosure(function(character: Model)
     data.ancestry_connection = character.AncestryChanged:Connect(function(_, parent)
         if parent ~= nil then
             return
-        end
-
-        if settings.fade_on_leave then
-            for i = 5, 0, -1 do
-                local alpha = i / 5
-                data.name_text.Transparency = alpha
-                data.distance_text.Transparency = alpha
-                data.weapon_text.Transparency = alpha
-                data.box_outline.Transparency = alpha
-                data.box_fill.Transparency = alpha
-                set_transparency(data.corner_lines, alpha)
-                set_transparency(data.skeleton_lines, alpha)
-                task.wait(0.02)
-            end
         end
 
         cleanup_esp_entry(character, data)
@@ -1382,10 +1023,3 @@ player_esp.init = function()
 end
 
 return player_esp
-
-
-
-
-
-
-
