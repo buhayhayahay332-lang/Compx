@@ -297,10 +297,6 @@ aimbot_groupbox:AddSlider('aimbot_fov_size', {
                     weapon_modifications_settings.firerate_step = (Value / 1000);
                 end});
 
-                weapon_modifications_groupbox:AddSlider('weapon_modifications_custom_zoom', {Text = 'Custom Zoom', Default = 15, Min = 1, Max = 30, Rounding = 0, Compact = false, Callback = function(Value)
-                    weapon_modifications_settings.custom_zoom = (Value / 10);
-                end});
-
 
             end;
         
